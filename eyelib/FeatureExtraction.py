@@ -41,19 +41,8 @@ class FeatureExtraction():
         }
 
         self.calibration_data = []
-    
-    @staticmethod
-    def _get_largest_box(boxes):
-        if len(boxes) == 0:
-            return []
-    
-        largest = boxes[0]
 
-        for (x, y, w, h) in boxes:
-            if w * h > largest[2] * largest[3]:
-                largest = (x, y, w, h)
-    
-        return largest
+        cv2.startWindowThread()
 
     def _detect_face(self, image, scale_factor=1.05, min_neighbors=6):
         gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
@@ -73,10 +62,6 @@ class FeatureExtraction():
         _, _, min_loc, _ = cv2.minMaxLoc(gray)
 
         return min_loc
-
-    @staticmethod
-    def _elementwise_weighted_average(previous_state, current_state, alpha):
-        return [int(x[0] * (1 - alpha) + x[1] * alpha) for x in zip(previous_state, current_state)]
 
     def _capture_image(self):
         ret, self.capture = self.cap.read()
@@ -156,4 +141,15 @@ class FeatureExtraction():
                      self.current_state["right_pupil"], 
                      self.current_state["left_pupil"]]
         
-        return [i for sub in a for i in temp_list]
+        final_list = []
+        for lst in temp_list:
+            for item in lst:
+                final_list.append(item)
+
+        return final_list
+    
+    def release(self):
+        self.cap.release()
+        for i in range(1,10):
+            cv2.destroyAllWindows()
+            cv2.waitKey(1)

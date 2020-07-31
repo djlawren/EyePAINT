@@ -5,8 +5,8 @@ EyePAINT
 By Dean Lawrence
 """
 
-from sklearn import linear_model
 import numpy as np 
+import copy
 
 class GazeEstimation():
     def __init__(self, x_estimator, y_estimator):
@@ -27,7 +27,7 @@ class GazeEstimation():
         self.data = {
             "x_predictors": [],
             "x_labels": [],
-            "y_predictos": [],
+            "y_predictors": [],
             "y_labels": []
         }
 

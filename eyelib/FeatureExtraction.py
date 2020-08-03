@@ -6,12 +6,22 @@ By Dean Lawrence
 """
 
 import cv2
+import dlib
+import numpy as np
 import time
 
 def weighted_average(previous_state, current_state, alpha):
+    """
+    Computes an elementwise weighted average between two arrays
+    """
+
     return [int(x[0] * (1 - alpha) + x[1] * alpha) for x in zip(previous_state, current_state)]
 
 def get_largest_box(boxes):
+    """
+    Given a list of bounding boxes, returns the box with the greatest area
+    """
+
     if len(boxes) == 0:
         return []
     
@@ -23,8 +33,26 @@ def get_largest_box(boxes):
     
     return largest
 
+def box_to_rect(box):
+    """
+    Converts box in (x,y,w,h) format into dlib rectangle object
+    """
+
+    return dlib.rectangle(box[0], box[1], box[0]+box[2], box[1]+box[3])
+
+def convert_shape_to_list(shape):
+    """
+    Converts dlib shape object to list
+    """
+
+    lst = []
+    for i in range(0, 68):
+        lst.append((shape.part(i).x, shape.part(i).y))
+    
+    return lst
+
 class FeatureExtraction():
-    def __init__(self, face_cascade_path, eye_cascade_path):
+    def __init__(self, face_cascade_path, eye_cascade_path, shape_predictor_path):
         
         self.cap = cv2.VideoCapture(0)
         _, self.capture = self.cap.read()
@@ -32,15 +60,17 @@ class FeatureExtraction():
         self.face_cascade = cv2.CascadeClassifier(face_cascade_path)
         self.eye_cascade = cv2.CascadeClassifier(eye_cascade_path)
 
+        self.pose_predictor = dlib.shape_predictor(shape_predictor_path)
+
         self.current_state = {
             "face": (0, 0, 10, 10),
             "right_eye": (0, 0, 10, 10),
             "left_eye": (0, 0, 10, 10),
             "right_pupil": (0, 0),
-            "left_pupil": (0, 0)
+            "left_pupil": (0, 0),
+            "pose": []
+            #"pose": [0 for i in range(0, 68)]
         }
-
-        self.calibration_data = []
 
         cv2.startWindowThread()
 
@@ -55,6 +85,12 @@ class FeatureExtraction():
         eyes = self.eye_cascade.detectMultiScale(gray, scale_factor, min_neighbors)
 
         return get_largest_box(eyes)
+
+    def _detect_pose(self, image):
+        gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
+        rect = box_to_rect(self.current_state["face"])
+
+        return convert_shape_to_list(self.pose_predictor(gray, rect))
 
     def _detect_pupil(self, image):
         gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
@@ -97,6 +133,12 @@ class FeatureExtraction():
             self.current_state["right_eye"] = weighted_average(self.current_state["right_eye"], (right_eye[0] + face_x + half_face_w, right_eye[1] + face_y, right_eye[2], right_eye[3]), alpha)
         
         return 1
+    
+    def _update_pose_state(self, alpha):
+        #self.current_state["pose"] = weighted_average(self.current_state["pose"], self._detect_pose(self.capture), alpha)
+        self.current_state["pose"] = self._detect_pose(self.capture)
+
+        return 1
 
     def _update_pupil_state(self, alpha):
         left_eye_x, left_eye_y, left_eye_w, left_eye_h = self.current_state["left_eye"]
@@ -111,12 +153,14 @@ class FeatureExtraction():
         self.current_state["left_pupil"] = weighted_average(self.current_state["left_pupil"], left_tuple, alpha)
         self.current_state["right_pupil"] = weighted_average(self.current_state["right_pupil"], right_tuple, alpha)
     
-    def update_feature_state(self, face_alpha=0.15, eye_alpha=0.15, pupil_alpha=0.3):
+    def update_feature_state(self, face_alpha=0.15, eye_alpha=0.15, pupil_alpha=0.3, pose_alpha=0.5):
         self._capture_image()
         
         self._update_face_state(face_alpha)
         self._update_eye_state(eye_alpha)
         self._update_pupil_state(pupil_alpha)
+        
+        self._update_pose_state(pose_alpha)
 
     def display_feature_state(self):
         img = self.capture
@@ -131,6 +175,9 @@ class FeatureExtraction():
         
         cv2.circle(img, tuple(self.current_state["left_pupil"]), 5, (0, 0, 255), 2)
         cv2.circle(img, tuple(self.current_state["right_pupil"]), 5, (0, 0, 255), 2)
+
+        for point in self.current_state["pose"]:
+            cv2.circle(img, (point[0], point[1]), 1, (0, 0, 255), -1)
 
         cv2.imshow("img", img)
     

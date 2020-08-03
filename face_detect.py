@@ -16,7 +16,8 @@ window = tk.Tk()
 label = tk.Label(window, text="X", font=tkFont.Font(size=30))
 
 feature_extractor = FeatureExtraction(face_cascade_path="./classifiers/haarcascade_frontalface_default.xml", 
-                                      eye_cascade_path="./classifiers/haarcascade_eye.xml")
+                                      eye_cascade_path="./classifiers/haarcascade_eye.xml",
+                                      shape_predictor_path="./classifiers/shape_predictor_68_face_landmarks.dat")
 gaze_estimator = GazeEstimation(linear_model.Ridge(alpha=0.5), linear_model.Ridge(alpha=0.5))
 
 cursor_x, cursor_y = 0, 0

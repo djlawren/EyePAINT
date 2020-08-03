@@ -33,12 +33,13 @@ class Button():
         self.y = y
         self.width = width
         self.height = height
+        self.color = color
 
     def render(self, surface):
         pygame.draw.rect(surface, self.color, (self.x, self.y, self.width, self.height))
 
 class Cursor():
-    def __init__():
+    def __init__(self):
         pass
 
     def render(self, surface):

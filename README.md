@@ -11,7 +11,9 @@ The software in this repository aims to provide a gaze estimation-based graphica
 ## Dependencies
 
 - Python 3.6
+- cmake
 - dlib
 - opencv
+- mtcnn
 - pygame
 - rxpy

@@ -9,6 +9,7 @@ import cv2
 import dlib
 import numpy as np
 import time
+import mtcnn
 
 def weighted_average(previous_state, current_state, alpha):
     """
@@ -40,6 +41,13 @@ def box_to_rect(box):
 
     return dlib.rectangle(box[0], box[1], box[0]+box[2], box[1]+box[3])
 
+def rect_to_box(rect):
+    """
+    Converts dlib rectangle object into (x,y,w,h) tuple for bounding box
+    """
+
+    return (rect.left(), rect.top(), rect.width(), rect.height())
+
 def convert_shape_to_list(shape):
     """
     Converts dlib shape object to list
@@ -47,9 +55,17 @@ def convert_shape_to_list(shape):
 
     lst = []
     for i in range(0, 68):
-        lst.append((shape.part(i).x, shape.part(i).y))
+        lst.append(shape.part(i).x)
+        lst.append(shape.part(i).y)
     
     return lst
+
+def get_point_from_shapelist(shapelist, index):
+    """
+    Given a list created from a pose shape and point number, return an (x,y) tuple
+    """
+
+    return (shapelist[index * 2], shapelist[index * 2 + 1])
 
 class FeatureExtraction():
     def __init__(self, face_cascade_path, eye_cascade_path, shape_predictor_path):
@@ -61,6 +77,8 @@ class FeatureExtraction():
         self.eye_cascade = cv2.CascadeClassifier(eye_cascade_path)
 
         self.pose_predictor = dlib.shape_predictor(shape_predictor_path)
+        self.mtcnn_detector = mtcnn.MTCNN()
+        self.hog_detector = dlib.get_frontal_face_detector()
 
         self.current_state = {
             "face": (0, 0, 10, 10),
@@ -68,19 +86,31 @@ class FeatureExtraction():
             "left_eye": (0, 0, 10, 10),
             "right_pupil": (0, 0),
             "left_pupil": (0, 0),
-            "pose": []
-            #"pose": [0 for i in range(0, 68)]
+            "pose": [0 for i in range(0, 68 * 2)]
         }
 
         cv2.startWindowThread()
 
-    def _detect_face(self, image, scale_factor=1.05, min_neighbors=6):
+    def _detect_face_haar(self, image, scale_factor=1.05, min_neighbors=6):
         gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
         faces = self.face_cascade.detectMultiScale(gray, scale_factor, min_neighbors)
     
         return get_largest_box(faces)
 
-    def _detect_eye(self, image, scale_factor=1.05, min_neighbors=6):
+    def _detect_face_hog(self, image):
+        gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
+        rects = self.hog_detector(gray, 0)
+        faces = [rect_to_box(rect) for rect in rects]
+
+        return get_largest_box(faces)
+
+    def _detect_face_mtcnn(self, image):
+        rgb = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
+        faces = [i['box'] for i in self.mtcnn_detector.detect_faces(rgb)]
+
+        return get_largest_box(faces)
+
+    def _detect_eye_haar(self, image, scale_factor=1.05, min_neighbors=6):
         gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
         eyes = self.eye_cascade.detectMultiScale(gray, scale_factor, min_neighbors)
 
@@ -108,7 +138,7 @@ class FeatureExtraction():
             return 1
 
     def _update_face_state(self, alpha):
-        face = self._detect_face(self.capture)
+        face = self._detect_face_hog(self.capture)
 
         if len(face) == 0:
             return -1
@@ -123,8 +153,8 @@ class FeatureExtraction():
         half_face_w = int(face_w / 2)
         half_face_h = int(face_h / 2)
         
-        left_eye = self._detect_eye(self.capture[face_y:face_y+half_face_h, face_x:face_x+half_face_w])
-        right_eye = self._detect_eye(self.capture[face_y:face_y+half_face_h, face_x+half_face_w:face_x+face_w])
+        left_eye = self._detect_eye_haar(self.capture[face_y:face_y+half_face_h, face_x:face_x+half_face_w])
+        right_eye = self._detect_eye_haar(self.capture[face_y:face_y+half_face_h, face_x+half_face_w:face_x+face_w])
 
         if len(left_eye) > 0:
             self.current_state["left_eye"] = weighted_average(self.current_state["left_eye"], (left_eye[0] + face_x, left_eye[1] + face_y, left_eye[2], left_eye[3]), alpha)
@@ -134,9 +164,35 @@ class FeatureExtraction():
         
         return 1
     
+    def _update_eye_state_from_pose(self, alpha):
+        if len(self.current_state['pose']) == 0:
+            return -1
+        
+        left_outer_point = get_point_from_shapelist(self.current_state['pose'], 36)
+        left_inner_point = get_point_from_shapelist(self.current_state['pose'], 39)
+
+        right_outer_point = get_point_from_shapelist(self.current_state['pose'], 45)
+        right_inner_point = get_point_from_shapelist(self.current_state['pose'], 42)
+
+        left_width = left_inner_point[0] - left_outer_point[0]
+        right_width = right_outer_point[0] - right_inner_point[0]
+
+        left_x = left_outer_point[0]
+        right_x = right_inner_point[0]
+        left_y = left_outer_point[1] - left_width / 2
+        right_y = right_inner_point[1] - right_width / 2
+
+        left_eye = (left_x, left_y, left_width, left_width)
+        right_eye = (right_x, right_y, right_width, right_width)
+
+        self.current_state["left_eye"] = weighted_average(self.current_state["left_eye"], left_eye, alpha)
+        self.current_state["right_eye"] = weighted_average(self.current_state["right_eye"], right_eye, alpha)
+
+        return 1
+    
     def _update_pose_state(self, alpha):
-        #self.current_state["pose"] = weighted_average(self.current_state["pose"], self._detect_pose(self.capture), alpha)
-        self.current_state["pose"] = self._detect_pose(self.capture)
+        self.current_state["pose"] = weighted_average(self.current_state["pose"], self._detect_pose(self.capture), alpha)
+        #self.current_state["pose"] = self._detect_pose(self.capture)
 
         return 1
 
@@ -152,12 +208,15 @@ class FeatureExtraction():
 
         self.current_state["left_pupil"] = weighted_average(self.current_state["left_pupil"], left_tuple, alpha)
         self.current_state["right_pupil"] = weighted_average(self.current_state["right_pupil"], right_tuple, alpha)
+
+        return 1
     
-    def update_feature_state(self, face_alpha=0.15, eye_alpha=0.15, pupil_alpha=0.3, pose_alpha=0.5):
+    def update_feature_state(self, face_alpha=0.15, eye_alpha=0.15, pupil_alpha=0.3, pose_alpha=0.8):
         self._capture_image()
         
         self._update_face_state(face_alpha)
-        self._update_eye_state(eye_alpha)
+        #self._update_eye_state(eye_alpha)
+        self._update_eye_state_from_pose(eye_alpha)
         self._update_pupil_state(pupil_alpha)
         
         self._update_pose_state(pose_alpha)
@@ -176,8 +235,8 @@ class FeatureExtraction():
         cv2.circle(img, tuple(self.current_state["left_pupil"]), 5, (0, 0, 255), 2)
         cv2.circle(img, tuple(self.current_state["right_pupil"]), 5, (0, 0, 255), 2)
 
-        for point in self.current_state["pose"]:
-            cv2.circle(img, (point[0], point[1]), 1, (0, 0, 255), -1)
+        for point in range(0, 68):
+            cv2.circle(img, get_point_from_shapelist(self.current_state['pose'], point), 1, (0, 0, 255), -1)
 
         cv2.imshow("img", img)
     

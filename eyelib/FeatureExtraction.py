@@ -191,7 +191,13 @@ class FeatureExtraction():
         return 1
     
     def _update_pose_state(self, alpha):
-        self.current_state["pose"] = weighted_average(self.current_state["pose"], self._detect_pose(self.capture), alpha)
+        detected_pose = self._detect_pose(self.capture)
+
+        for i in [x for x in range(68 * 2) if x % 2 == 0]:
+            detected_pose[i] -= self.current_state["face"][0]
+            detected_pose[i + 1] -= self.current_state["face"][1]
+        
+        self.current_state["pose"] = weighted_average(self.current_state["pose"], detected_pose, alpha)
         #self.current_state["pose"] = self._detect_pose(self.capture)
 
         return 1
@@ -199,15 +205,21 @@ class FeatureExtraction():
     def _update_pupil_state(self, alpha):
         left_eye_x, left_eye_y, left_eye_w, left_eye_h = self.current_state["left_eye"]
         right_eye_x, right_eye_y, right_eye_w, right_eye_h = self.current_state["right_eye"]
+        face_x, face_y, _, _ = self.current_state["face"]
+
+        left_eye_x += face_x
+        left_eye_y += face_y
+        right_eye_x += face_x
+        right_eye_y += face_y
 
         left_pupil = self._detect_pupil(self.capture[left_eye_y:left_eye_y+left_eye_h, left_eye_x:left_eye_x+left_eye_w])
         right_pupil = self._detect_pupil(self.capture[right_eye_y:right_eye_y+right_eye_h, right_eye_x:right_eye_x+right_eye_w])
 
-        left_tuple = tuple([sum(x) for x in zip((left_eye_x, left_eye_y), left_pupil)])
-        right_tuple = tuple([sum(x) for x in zip((right_eye_x, right_eye_y), right_pupil)])
+        #left_tuple = tuple([sum(x) for x in zip((left_eye_x, left_eye_y), left_pupil)])
+        #right_tuple = tuple([sum(x) for x in zip((right_eye_x, right_eye_y), right_pupil)])
 
-        self.current_state["left_pupil"] = weighted_average(self.current_state["left_pupil"], left_tuple, alpha)
-        self.current_state["right_pupil"] = weighted_average(self.current_state["right_pupil"], right_tuple, alpha)
+        self.current_state["left_pupil"] = weighted_average(self.current_state["left_pupil"], left_pupil, alpha)
+        self.current_state["right_pupil"] = weighted_average(self.current_state["right_pupil"], right_pupil, alpha)
 
         return 1
     
@@ -229,14 +241,22 @@ class FeatureExtraction():
         
         right_eye = self.current_state["right_eye"]
         left_eye = self.current_state["left_eye"]
-        cv2.rectangle(img, (right_eye[0], right_eye[1]), (right_eye[0]+right_eye[2], right_eye[1]+right_eye[3]), (0, 255, 0), 2)
-        cv2.rectangle(img, (left_eye[0], left_eye[1]), (left_eye[0]+left_eye[2], left_eye[1]+left_eye[3]), (0, 255, 0), 2)
+        cv2.rectangle(img, (right_eye[0]+face[0], right_eye[1]+face[1]), (right_eye[0]+right_eye[2]+face[0], right_eye[1]+right_eye[3]+face[1]), (0, 255, 0), 2)
+        cv2.rectangle(img, (left_eye[0]+face[0], left_eye[1]+face[1]), (left_eye[0]+left_eye[2]+face[0], left_eye[1]+left_eye[3]+face[1]), (0, 255, 0), 2)
         
-        cv2.circle(img, tuple(self.current_state["left_pupil"]), 5, (0, 0, 255), 2)
-        cv2.circle(img, tuple(self.current_state["right_pupil"]), 5, (0, 0, 255), 2)
+        left_tuple = tuple([sum(x) for x in zip((left_eye[0]+face[0], left_eye[1]+face[1]), self.current_state["left_pupil"])])
+        right_tuple = tuple([sum(x) for x in zip((right_eye[0]+face[0], right_eye[1]+face[1]), self.current_state["right_pupil"])])
+
+        cv2.circle(img, left_tuple, 5, (0, 0, 255), 2)
+        cv2.circle(img, right_tuple, 5, (0, 0, 255), 2)
 
         for point in range(0, 68):
-            cv2.circle(img, get_point_from_shapelist(self.current_state['pose'], point), 1, (0, 0, 255), -1)
+            initial_point = list(get_point_from_shapelist(self.current_state['pose'], point))
+            initial_point[0] += face[0]
+            initial_point[1] += face[1]
+            initial_point = tuple(initial_point)
+
+            cv2.circle(img, initial_point, 1, (0, 0, 255), -1)
 
         cv2.imshow("img", img)
     

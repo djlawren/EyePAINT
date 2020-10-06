@@ -81,7 +81,7 @@ class FeatureExtraction():
         self.hog_detector = dlib.get_frontal_face_detector()
 
         self.current_state = {
-            "face": (0, 0, 10, 10),
+            "face": (0, 0, 100, 100),
             "right_eye": (0, 0, 10, 10),
             "left_eye": (0, 0, 10, 10),
             "right_pupil": (0, 0),
@@ -223,15 +223,15 @@ class FeatureExtraction():
 
         return 1
     
-    def update_feature_state(self, face_alpha=0.15, eye_alpha=0.15, pupil_alpha=0.3, pose_alpha=0.8):
+    def update_feature_state(self, face_alpha=0.15, eye_alpha=1, pupil_alpha=0.3, pose_alpha=0.7):
         self._capture_image()
         
         self._update_face_state(face_alpha)
+        self._update_pose_state(pose_alpha)
         #self._update_eye_state(eye_alpha)
         self._update_eye_state_from_pose(eye_alpha)
         self._update_pupil_state(pupil_alpha)
         
-        self._update_pose_state(pose_alpha)
 
     def display_feature_state(self):
         img = self.capture
@@ -261,12 +261,17 @@ class FeatureExtraction():
         cv2.imshow("img", img)
     
     def get_state_as_vector(self):
-        temp_list = [self.current_state["face"], 
-                     self.current_state["right_eye"], 
-                     self.current_state["left_eye"], 
-                     self.current_state["right_pupil"], 
-                     self.current_state["left_pupil"]]
+        #temp_list = [self.current_state["face"], 
+        #             self.current_state["right_eye"], 
+        #             self.current_state["left_eye"], 
+        #             self.current_state["right_pupil"], 
+        #             self.current_state["left_pupil"]]
         
+        temp_list = [self.current_state["right_eye"],
+                     self.current_state["left_eye"],
+                     self.current_state["right_pupil"],
+                     self.current_state["left_pupil"]]
+
         final_list = []
         for lst in temp_list:
             for item in lst:

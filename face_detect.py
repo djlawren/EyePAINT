@@ -36,7 +36,7 @@ def update_gaze_prediction():
     if gaze_estimator.is_trained():
         pred_x, pred_y = gaze_estimator.predict(feature_extractor.get_state_as_vector())
 
-        cursor_x, cursor_y = weighted_average((cursor_x, cursor_y), (pred_x, pred_y), 0.5)
+        cursor_x, cursor_y = weighted_average((cursor_x, cursor_y), (pred_x, pred_y), 0.2)
 
         label.place(x=cursor_x, y=cursor_y)
         
@@ -55,9 +55,6 @@ def update_data(event):
 def main():
     global window, feature_extractor, gaze_estimator, label
 
-    #submit = tk.Button(text="Fit")
-    #submit.bind("<Button 1>", lambda e: gaze_estimator.train())
-    #submit.place(x=0, y=0)
     label.place(x=0, y=0)
 
     window.bind("<Button 1>", update_data)

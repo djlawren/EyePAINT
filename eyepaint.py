@@ -234,17 +234,17 @@ class App():
         if self.state == ProgramState.Calibration:
             
             # If 10 samples of data are added, train the regressors and move onto next state
-            if self.gaze_estimation.get_sample_count() >= 10:
+            if self.gaze_estimation.get_sample_count() > 10:
                 self.gaze_estimation.train()
                 self.state = ProgramState.Primary
 
         elif self.state == ProgramState.Primary:
             
             gaze_location = self.gaze_estimation.get()
-
+            
             if gaze_location != None:
                 self.gaze_state = gaze_location
-            
+                
         elif self.state == ProgramState.ColorSelect:
             pass
 
@@ -255,14 +255,16 @@ class App():
             pass
     
     def render(self):
-        screen.fill((255,255,255))  # Clear screen
+        self._screen.fill((255,255,255))  # Clear screen
 
         if self.state == ProgramState.Calibration:
             pass
 
         elif self.state == ProgramState.Primary:
             #redrawScreen()
-            pygame.draw.circle(self._screen, (100,100,100), (self.gaze_state.getX(),self.gaze_state.getY()), 4)
+
+            if self.gaze_state != None:
+                pygame.draw.circle(self._screen, (0,0,0), (self.gaze_state.getX(),self.gaze_state.getY()), 10)
 
         elif self.state == ProgramState.ColorSelect:
             pass
@@ -272,6 +274,8 @@ class App():
 
         elif self.state == ProgramState.Confirmation:
             pass
+
+        pygame.display.update()
 
     def cleanup(self):
         pygame.quit()

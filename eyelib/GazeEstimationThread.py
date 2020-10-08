@@ -28,8 +28,9 @@ class GazeEstimationThread():
 
     def run(self):
         while True:
+            self._feature_extractor.update_feature_state()
+            
             if self._gaze_estimator.is_trained():
-                self._feature_extractor.update_feature_state()
                 self._gaze_queue.put(self._gaze_estimator.predict(self._feature_extractor.get_state_as_vector()))
     
     def get(self):

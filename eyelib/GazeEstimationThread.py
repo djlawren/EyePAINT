@@ -28,12 +28,25 @@ class GazeEstimationThread():
 
     def run(self):
         while True:
-            self._feature_extractor.update_feature_state()
-            self._gaze_queue.put(self._gaze_estimator.predict(self._feature_extractor.get_state_as_vector()))
+            if self._gaze_estimator.is_trained():
+                self._feature_extractor.update_feature_state()
+                self._gaze_queue.put(self._gaze_estimator.predict(self._feature_extractor.get_state_as_vector()))
     
     def get(self):
         if self._gaze_queue.qsize() == 0:
             return None
         else:
             return self._gaze_queue.get()
+    
+    def add_sample(self, label):
+        self._gaze_estimator.add_sample(self._feature_extractor.get_state_as_vector(), label)
+
+    def train(self):
+        self._gaze_estimator.train()
+    
+    def get_sample_count(self):
+        return len(self._gaze_estimator.data["x_labels"])
+    
+    def is_trained(self):
+        return self._gaze_estimator.is_trained()
 

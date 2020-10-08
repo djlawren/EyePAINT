@@ -1,20 +1,16 @@
 """
 EyePAINT
+
 By Hannah Imboden and Dean Lawrence
 """
 
 import pygame
 import enum
+from sklearn import linear_model
 
 from eyelib import GazeEstimationThread
 
-class ProgramState(enum.Enum):
-    Calibration = 1
-    Primary = 2
-    ColorSelect = 3
-    ToolSelect = 4
-    Confirmation = 5
-
+"""
 pygame.init()
 
 x = 50
@@ -147,16 +143,10 @@ toolButtonsScale()
 #Game Loop
 run = True
 
-#gaze_estimation = GazeEstimationThread()
-
-# Initial state stuff
-state = ProgramState.Calibration
-
-
 while run == True:
     pygame.time.delay(20) #pass time
     
-    """
+    
     #check for events
     for event in pygame.event.get():
         if event.type == pygame.QUIT:
@@ -172,72 +162,114 @@ while run == True:
         y -= vel
     if keys[pygame.K_DOWN] and y < screenY - r - vel:
         y += vel
-    """
 
-    if state == ProgramState.Calibration:
-        pass
-    elif state == ProgramState.Primary:
-        redrawScreen()
-    elif state == ProgramState.ColorSelect:
-        pass
-    elif state == ProgramState.ToolSelect:
-        pass
-    elif state == ProgramState.Confirmation:
-        pass
+    redrawScreen()
+"""
 
-class Calibration():
-    def __init__(self):
-        pass
 
-    def update(self):
-        pass
 
-    def render(self):
-        pass
+
+
+
+
+class ProgramState(enum.Enum):
+    Calibration = 1
+    Primary = 2
+    ColorSelect = 3
+    ToolSelect = 4
+    Confirmation = 5
 
 class App():
-    def __init__(self):
+    def __init__(self, width, height):
         self._running = True
-        self._display_surf = None
-        self.size = self.width, self.height = 1500, 900
+        self._screen = None
+        self.size = self.width, self.height = width, height     # Hardcoded dimensions for the window
 
-        self.state = ProgramState.Calibration
-        self.gaze_estimation = GazeEstimationThread()
+        self.state = ProgramState.Calibration       # Program begins in the calibrated state
+        self.gaze_state = None
+
+        # Object that runs the gaze estimation in a separate thread
+        # Deposits predictions into a queue that can be accessed through get()
+        self.gaze_estimation = GazeEstimationThread(x_estimator=linear_model.Ridge(alpha=0.5),
+                                                    y_estimator=linear_model.Ridge(alpha=0.5),
+                                                    face_cascade_path="./classifiers/haarcascade_frontalface_default.xml",
+                                                    eye_cascade_path="./classifiers/haarcascade_eye.xml",
+                                                    shape_predictor_path="./classifiers/shape_predictor_68_face_landmarks.dat",
+                                                    width=self.width,
+                                                    height=self.height)
     
     def init(self):
         pygame.init()
-        self._display_surf = pygame.display.set_mode(self.size, pygame.HWSURFACE | pygame.DOUBLEBUF)
+        self._screen = pygame.display.set_mode(self.size, pygame.HWSURFACE | pygame.DOUBLEBUF)
         self._running = True
 
         # Hannah's Stuff
-        colorButtonsScale()
-        toolButtonsScale()
+        #colorButtonsScale()
+        #toolButtonsScale()
     
     def on_event(self, event):
-        if event.type == pygame.QUIT:
+        if event.type == pygame.QUIT:   # Kill app in case of a quit
             self._running = False
+        
+        if self.state == ProgramState.Calibration:
+            
+            # Temporary calibration routine where clicks add samples
+            if event.type == pygame.MOUSEBUTTONUP:
+                self.gaze_estimation.add_sample(pygame.mouse.get_pos()) 
+                print("New sample added")
+                
+        elif self.state == ProgramState.Primary:
+            pass
+
+        elif self.state == ProgramState.ColorSelect:
+            pass
+
+        elif self.state == ProgramState.ToolSelect:
+            pass
+
+        elif self.state == ProgramState.Confirmation:
+            pass
     
     def loop(self):
         if self.state == ProgramState.Calibration:
-            pass
+            
+            # If 10 samples of data are added, train the regressors and move onto next state
+            if self.gaze_estimation.get_sample_count() >= 10:
+                self.gaze_estimation.train()
+                self.state = ProgramState.Primary
+
         elif self.state == ProgramState.Primary:
-            pass
+            
+            gaze_location = self.gaze_estimation.get()
+
+            if gaze_location != None:
+                self.gaze_state = gaze_location
+            
         elif self.state == ProgramState.ColorSelect:
             pass
+
         elif self.state == ProgramState.ToolSelect:
             pass
+
         elif self.state == ProgramState.Confirmation:
             pass
     
     def render(self):
+        screen.fill((255,255,255))  # Clear screen
+
         if self.state == ProgramState.Calibration:
             pass
+
         elif self.state == ProgramState.Primary:
-            redrawScreen()
+            #redrawScreen()
+            pygame.draw.circle(self._screen, (100,100,100), (self.gaze_state.getX(),self.gaze_state.getY()), 4)
+
         elif self.state == ProgramState.ColorSelect:
             pass
+
         elif self.state == ProgramState.ToolSelect:
             pass
+
         elif self.state == ProgramState.Confirmation:
             pass
 
@@ -258,7 +290,5 @@ class App():
         self.cleanup()
 
 if __name__ == "__main__":
-    app = App()
+    app = App(1500, 900)
     app.execute()
-
-#pygame.quit()

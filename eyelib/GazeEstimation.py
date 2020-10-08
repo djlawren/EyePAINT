@@ -8,6 +8,17 @@ By Dean Lawrence
 import numpy as np 
 import copy
 
+class GazeState():
+    def __init__(self, x, y):
+        self._x = x
+        self._y = y
+    
+    def getX(self):
+        return self._x
+
+    def getY(self):
+        return self._y
+
 class GazeEstimation():
     def __init__(self, x_estimator, y_estimator, width, height):
         
@@ -68,8 +79,8 @@ class GazeEstimation():
         x_features = np.array(predictor[0:-1:2]).reshape(1, -1)
         y_features = np.array(predictor[1:-1:2]).reshape(1, -1)
 
-        return (int(self.x_estimator.predict(x_features) * self.width),
-                int(self.y_estimator.predict(y_features) * self.height))
+        return GazeState(min(max(int(self.x_estimator.predict(x_features) * self.width), 0), self.width),
+                         min(max(int(self.y_estimator.predict(y_features) * self.height), 0), self.height))
     
     def is_trained(self):
         return self._trained

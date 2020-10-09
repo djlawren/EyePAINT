@@ -85,16 +85,23 @@ class App():
         self.active_color = Color.Blue
         self.active_tool = Tool.Line
 
+        self.color_dict = {
+            Color.Blue:     (248, 202, 157),
+            Color.Green:    (197, 215, 192),
+            Color.Red:      (142, 201, 187),
+            Color.Yellow:   (251, 142, 126),
+        }
+
         self.button_dict = {
             ProgramState.Calibration:   [],
-            ProgramState.Primary:       [Button(400, 225, 50, 50, (248, 202, 157), 800, 450),   # Upper left color select button
-                                         Button(1200, 225, 50, 50, (197, 215, 192), 800, 450),  # Upper right color select button
-                                         Button(400, 675, 50, 50, (142, 201, 187), 800, 450),   # Lower left color select button
-                                         Button(1200, 675, 50, 50, (251, 142, 126), 800, 450)], # Lower right color select button
-            ProgramState.ColorSelect:   [Button(400, 225, 50, 50, (0, 0, 0), 800, 450),   # 
-                                         Button(1200, 225, 50, 50, (0, 0, 0), 800, 450),  # 
-                                         Button(400, 675, 50, 50, (0, 0, 0), 800, 450),   # 
-                                         Button(1200, 675, 50, 50, (0, 0, 0), 800, 450)], # 
+            ProgramState.Primary:       [Button(400, 225, 100, 100, self.color_dict[Color.Blue], 800, 450),     # Upper left color select button
+                                         Button(1200, 225, 100, 100, self.color_dict[Color.Green], 800, 450),   # Upper right color select button
+                                         Button(400, 675, 100, 100, self.color_dict[Color.Red], 800, 450),      # Lower left color select button
+                                         Button(1200, 675, 100, 100, self.color_dict[Color.Yellow], 800, 450)], # Lower right color select button
+            ProgramState.ColorSelect:   [Button(400, 225, 100, 100, self.color_dict[Color.Blue], 800, 450),     # Upper left color select button
+                                         Button(1200, 225, 100, 100, self.color_dict[Color.Green], 800, 450),   # Upper right color select button
+                                         Button(400, 675, 100, 100, self.color_dict[Color.Red], 800, 450),      # Lower left color select button
+                                         Button(1200, 675, 100, 100, self.color_dict[Color.Yellow], 800, 450)], # Lower right color select button
             ProgramState.ToolSelect:    [],
             ProgramState.Confirmation:  []
         }
@@ -113,6 +120,7 @@ class App():
         pygame.init()
         self._screen = pygame.display.set_mode(self.size, pygame.HWSURFACE | pygame.DOUBLEBUF)
         self._running = True
+        pygame.display.set_caption("EyePAINT")
 
         # Hannah's Stuff
         #colorButtonsScale()
@@ -156,6 +164,7 @@ class App():
             if gaze_location != None:
                 self.gaze_state = gaze_location
 
+            if self.gaze_state != None:
                 for button in self.button_dict[self.state]:
                     button.contains(self.gaze_state.getX(), self.gaze_state.getY())
                 
@@ -208,7 +217,7 @@ class App():
             self.loop()
             self.render()
 
-            pygame.time.delay(33)
+            pygame.time.delay(15)
         
         self.cleanup()
 

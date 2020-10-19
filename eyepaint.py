@@ -32,26 +32,36 @@ class Tool():
     Circle = 2
 
 # If it has an interface of contains and draw, it can probably be a button
-class Button():
-    def __init__(self, cx, cy, width, height, color, active_width, active_height, steps=90):
+class ColorButton():
+    def __init__(self, cx, cy, width, height, color, active_width, active_height, tool_color, steps=90):
         
-        self.cx = cx
-        self.cy = cy
-        self.width = self.set_width = width
-        self.height = self.set_height = height
-        self.color = color
+        self.cx = cx    # Center x position
+        self.cy = cy    # Center y position
+        self.width = self.set_width = width     # Width of drawn button
+        self.height = self.set_height = height  # Height of drawn button
+        self.color = color  # Color tuple
 
-        self.active_width = active_width
-        self.active_height = active_height
+        self.active_width = active_width    # Width of active area
+        self.active_height = active_height  # Height of active area
         
-        self.step = self.set_steps = steps
+        self.step = self.set_steps = steps  # Total number of steps in the update
+
+        self.tool_color = tool_color    # Tool enum thing for returning when clicked
     
     def reset(self):
+        """
+        Resets the steps and width and height of the button to default
+        """
+
         self.step = self.set_steps
         self.width = self.set_width
         self.height = self.set_height
 
     def decrement(self, ticks=1):
+        """
+        Decrements the steps and width and height
+        """
+
         self.step = max(0, self.step - ticks)
 
         self.width = int((self.step / self.set_steps) * self.set_width)
@@ -59,8 +69,15 @@ class Button():
 
     def get_step(self):
         return self.step
+    
+    def get_color(self):
+        return self.tool_color
 
     def contains(self, x, y):
+        """
+        Handles all of the containing code. If cursor is within active area, decrement, otherwise reset
+        """
+
         if x >= self.cx - self.active_width / 2 and  \
            x <= self.cx + self.active_width / 2 and  \
            y >= self.cy - self.active_height / 2 and \
@@ -68,20 +85,79 @@ class Button():
            
            self.decrement()     # If the cursor is within the active area, decrement
 
-           if self.get_step() == 0:
-               pass
+        else:
+            self.reset()        # If the cursor is not within the active area, reset the size of the button
+
+    def draw(self, screen):
+        """
+        Draw the button on the pygame canvas
+        """
+
+        pygame.draw.rect(screen, self.color, pygame.Rect(self.cx - self.width / 2, self.cy - self.height / 2, self.width, self.height))
+
+class ToolButton():
+    def __init__(self, image_path, steps=90):
+        pass
+
+    def contains(self, x, y):
+        pass
+
+    def draw(self, screen):
+        pass
+
+class CanvasButton():
+    def __init__(self, cx, cy, active_width, active_height, steps=90, increment=0.5):
+        self.cx = cx
+        self.cy = cy
+        self.active_width = active_width
+        self.active_height = active_height
+
+        self.increment = increment
+        self.crad = 0
+
+        self.step = self.set_steps = steps
+    
+    def reset(self):
+        self.step = self.set_steps
+        self.crad = 0
+
+    def decrement(self, ticks=1):
+        self.step = max(0, self.step - ticks)
+
+        self.crad += self.increment
+
+    def get_step(self):
+        return self.step
+
+    def contains(self, x, y):
+        """
+        Handles all of the containing code. If cursor is within active area, decrement, otherwise reset
+        """
+        
+        if x >= self.cx - self.active_width / 2 and  \
+           x <= self.cx + self.active_width / 2 and  \
+           y >= self.cy - self.active_height / 2 and \
+           y <= self.cy + self.active_height / 2:
+           
+            self.decrement()     # If the cursor is within the active area, decrement
 
         else:
             self.reset()        # If the cursor is not within the active area, reset the size of the button
 
     def draw(self, screen):
-        pygame.draw.rect(screen, self.color, pygame.Rect(self.cx - self.width / 2, self.cy - self.height / 2, self.width, self.height))
+        """
+        Draw the active circle on the pygame canvas
+        """
+
+        pygame.draw.circle(screen, (255, 0, 0), (self.cx, self.cy), int(self.crad))
 
 class App():
-    def __init__(self, width, height):
+    def __init__(self, width, height, canvas_divisions=4):
         self._running = True
         self._screen = None
         self.size = self.width, self.height = width, height     # Hardcoded dimensions for the window
+
+        self.canvas_divisions = canvas_divisions
 
         self.state = ProgramState.Calibration       # Program begins in the calibrated state
         self.gaze_state = None
@@ -101,10 +177,10 @@ class App():
         self.button_dict = {
             ProgramState.Calibration:   [],
             ProgramState.Primary:       [],
-            ProgramState.ColorSelect:   [Button(self.width * (1/4), self.height * (1/4), 100, 100, self.color_dict[Color.Blue], self.width / 2, self.height / 2),     # Upper left color select button
-                                         Button(self.width * (3/4), self.height * (1/4), 100, 100, self.color_dict[Color.Green], self.width / 2, self.height / 2),   # Upper right color select button
-                                         Button(self.width * (1/4), self.height * (3/4), 100, 100, self.color_dict[Color.Red], self.width / 2, self.height / 2),      # Lower left color select button
-                                         Button(self.width * (3/4), self.height * (3/4), 100, 100, self.color_dict[Color.Yellow], self.width / 2, self.height / 2)], # Lower right color select button
+            ProgramState.ColorSelect:   [ColorButton(self.width * (1/4), self.height * (1/4), 100, 100, self.color_dict[Color.Blue], self.width / 2, self.height / 2, Color.Blue),     # Upper left color select button
+                                         ColorButton(self.width * (3/4), self.height * (1/4), 100, 100, self.color_dict[Color.Green], self.width / 2, self.height / 2, Color.Green),   # Upper right color select button
+                                         ColorButton(self.width * (1/4), self.height * (3/4), 100, 100, self.color_dict[Color.Red], self.width / 2, self.height / 2, Color.Red),      # Lower left color select button
+                                         ColorButton(self.width * (3/4), self.height * (3/4), 100, 100, self.color_dict[Color.Yellow], self.width / 2, self.height / 2, Color.Yellow)], # Lower right color select button
             ProgramState.ToolSelect:    [],
             ProgramState.Confirmation:  []
         }
@@ -149,6 +225,12 @@ class App():
             pass    # Do event handling for the confirmation screen
     
     def loop(self):
+        
+        gaze_location = self.gaze_estimation.get()  # Get the current gaze estimation position from the queue
+        
+        if gaze_location != None:   # If there was a location, update the classes known location
+            self.gaze_state = gaze_location
+        
         if self.state == ProgramState.Calibration:
             
             # If 10 samples of data are added, train the regressors and move onto next state
@@ -157,18 +239,17 @@ class App():
                 self.state = ProgramState.Primary
 
         elif self.state == ProgramState.Primary:
-            
-            gaze_location = self.gaze_estimation.get()  # Get the current gaze estimation position from the queue
-            
-            if gaze_location != None:   # If there was a location, update the classes known location
-                self.gaze_state = gaze_location
+            pass    # Do update program stuff for the primary canvas screen
+                
+        elif self.state == ProgramState.ColorSelect:
 
             if self.gaze_state != None: # If there is a gaze state, update the buttons
                 for button in self.button_dict[self.state]: # Update all the buttons in the button dictionary
                     button.contains(self.gaze_state.getX(), self.gaze_state.getY())
-                
-        elif self.state == ProgramState.ColorSelect:
-            pass    # Do update program stuff for the color select screen
+
+                    if button.get_step() == 0:
+                        self.active_color = button.get_color()
+                        self.state == ProgramState.Primary
 
         elif self.state == ProgramState.ToolSelect:
             pass    # Do update program stuff for the tool select screen
@@ -178,9 +259,6 @@ class App():
     
     def render(self):
         self._screen.fill((255,255,255))  # Clear screen
-
-        for button in self.button_dict[self.state]:     # Draw all buttons for a given screen
-            button.draw(self._screen)
 
         if self.state == ProgramState.Calibration:
             pass    # Render code for while on the calibration screen
@@ -199,6 +277,9 @@ class App():
 
         elif self.state == ProgramState.Confirmation:
             pass    # Render code for while on the line confirmation screen
+        
+        for button in self.button_dict[self.state]:     # Draw all buttons for a given screen
+            button.draw(self._screen)
 
         pygame.display.update()     # Redraw the display
 

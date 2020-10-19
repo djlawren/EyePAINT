@@ -39,7 +39,8 @@ class GcodeGeneration():
         Initializes the board parameters with a default string and sends it to the board
         """
 
-        init_string = ""
+        init_string = "G90\r\n" + \
+                      "G28\r\n"
 
         self._send(init_string)
 
@@ -75,7 +76,7 @@ class GcodeGeneration():
                "G01 X{} Y{} Z10\r\n".format(end_true_x, end_true_y)
 
     def _circle(self, point1, point2):
-        pass
+        return ""
 
     def _clean(self):
         """

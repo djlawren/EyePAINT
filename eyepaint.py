@@ -9,8 +9,9 @@ import enum
 from sklearn import linear_model
 
 from eyelib import GazeEstimationThread
+from eyelib import GcodeGeneration
 
-
+# Enum for different screens that exist in the program
 class ProgramState(enum.Enum):
     Calibration = 1
     Primary = 2
@@ -18,16 +19,19 @@ class ProgramState(enum.Enum):
     ToolSelect = 4
     Confirmation = 5
 
+# Enums for types of colors
 class Color(enum.Enum):
     Blue = 1
     Green = 2
     Red = 3
     Yellow = 4
 
+# Enum for the types of tools
 class Tool():
     Line = 1
     Circle = 2
 
+# If it has an interface of contains and draw, it can probably be a button
 class Button():
     def __init__(self, cx, cy, width, height, color, active_width, active_height, steps=90):
         
@@ -82,9 +86,10 @@ class App():
         self.state = ProgramState.Calibration       # Program begins in the calibrated state
         self.gaze_state = None
 
-        self.active_color = Color.Blue
-        self.active_tool = Tool.Line
+        self.active_color = Color.Blue  # Store an active color
+        self.active_tool = Tool.Line    # Store an active tool
 
+        # Dictionary to store color tuples for consistency between things later
         self.color_dict = {
             Color.Blue:     (248, 202, 157),
             Color.Green:    (197, 215, 192),
@@ -92,16 +97,14 @@ class App():
             Color.Yellow:   (251, 142, 126),
         }
 
+        # Lists of buttons that are separated by program state
         self.button_dict = {
             ProgramState.Calibration:   [],
-            ProgramState.Primary:       [Button(400, 225, 100, 100, self.color_dict[Color.Blue], 800, 450),     # Upper left color select button
-                                         Button(1200, 225, 100, 100, self.color_dict[Color.Green], 800, 450),   # Upper right color select button
-                                         Button(400, 675, 100, 100, self.color_dict[Color.Red], 800, 450),      # Lower left color select button
-                                         Button(1200, 675, 100, 100, self.color_dict[Color.Yellow], 800, 450)], # Lower right color select button
-            ProgramState.ColorSelect:   [Button(400, 225, 100, 100, self.color_dict[Color.Blue], 800, 450),     # Upper left color select button
-                                         Button(1200, 225, 100, 100, self.color_dict[Color.Green], 800, 450),   # Upper right color select button
-                                         Button(400, 675, 100, 100, self.color_dict[Color.Red], 800, 450),      # Lower left color select button
-                                         Button(1200, 675, 100, 100, self.color_dict[Color.Yellow], 800, 450)], # Lower right color select button
+            ProgramState.Primary:       [],
+            ProgramState.ColorSelect:   [Button(self.width * (1/4), self.height * (1/4), 100, 100, self.color_dict[Color.Blue], self.width / 2, self.height / 2),     # Upper left color select button
+                                         Button(self.width * (3/4), self.height * (1/4), 100, 100, self.color_dict[Color.Green], self.width / 2, self.height / 2),   # Upper right color select button
+                                         Button(self.width * (1/4), self.height * (3/4), 100, 100, self.color_dict[Color.Red], self.width / 2, self.height / 2),      # Lower left color select button
+                                         Button(self.width * (3/4), self.height * (3/4), 100, 100, self.color_dict[Color.Yellow], self.width / 2, self.height / 2)], # Lower right color select button
             ProgramState.ToolSelect:    [],
             ProgramState.Confirmation:  []
         }
@@ -117,14 +120,10 @@ class App():
                                                     height=self.height)
     
     def init(self):
-        pygame.init()
-        self._screen = pygame.display.set_mode(self.size, pygame.HWSURFACE | pygame.DOUBLEBUF)
-        self._running = True
-        pygame.display.set_caption("EyePAINT")
-
-        # Hannah's Stuff
-        #colorButtonsScale()
-        #toolButtonsScale()
+        pygame.init()   # Init pygame stuff
+        self._screen = pygame.display.set_mode(self.size, pygame.HWSURFACE | pygame.DOUBLEBUF)  # Create the screen for drawing
+        self._running = True    # Set running to true
+        pygame.display.set_caption("EyePAINT")  # Set the title of the program to EyePAINT
     
     def on_event(self, event):
         if event.type == pygame.QUIT:   # Kill app in case of a quit
@@ -138,16 +137,16 @@ class App():
                 print("New sample added")
                 
         elif self.state == ProgramState.Primary:
-            pass
+            pass    # Do event handling for the primary canvas screen
 
         elif self.state == ProgramState.ColorSelect:
-            pass
+            pass    # Do event handling for the color select screen
 
         elif self.state == ProgramState.ToolSelect:
-            pass
+            pass    # Do event handling for the tool select screen
 
         elif self.state == ProgramState.Confirmation:
-            pass
+            pass    # Do event handling for the confirmation screen
     
     def loop(self):
         if self.state == ProgramState.Calibration:
@@ -159,23 +158,23 @@ class App():
 
         elif self.state == ProgramState.Primary:
             
-            gaze_location = self.gaze_estimation.get()
+            gaze_location = self.gaze_estimation.get()  # Get the current gaze estimation position from the queue
             
-            if gaze_location != None:
+            if gaze_location != None:   # If there was a location, update the classes known location
                 self.gaze_state = gaze_location
 
-            if self.gaze_state != None:
-                for button in self.button_dict[self.state]:
+            if self.gaze_state != None: # If there is a gaze state, update the buttons
+                for button in self.button_dict[self.state]: # Update all the buttons in the button dictionary
                     button.contains(self.gaze_state.getX(), self.gaze_state.getY())
                 
         elif self.state == ProgramState.ColorSelect:
-            pass
+            pass    # Do update program stuff for the color select screen
 
         elif self.state == ProgramState.ToolSelect:
-            pass
+            pass    # Do update program stuff for the tool select screen
 
         elif self.state == ProgramState.Confirmation:
-            pass
+            pass    # Do update program stuff for the confirmation screen
     
     def render(self):
         self._screen.fill((255,255,255))  # Clear screen
@@ -184,31 +183,35 @@ class App():
             button.draw(self._screen)
 
         if self.state == ProgramState.Calibration:
-            pass
+            pass    # Render code for while on the calibration screen
 
         elif self.state == ProgramState.Primary:
-            pass
+            pass    # Render code for while on the primary canvas screen
 
             #if self.gaze_state != None:
             #    pygame.draw.circle(self._screen, (0,0,0), (self.gaze_state.getX(),self.gaze_state.getY()), 10)
 
         elif self.state == ProgramState.ColorSelect:
-            pass
+            pass    # Render code for while in the color select screen
 
         elif self.state == ProgramState.ToolSelect:
-            pass
+            pass    # Render code for while in the tool select screen
 
         elif self.state == ProgramState.Confirmation:
-            pass
+            pass    # Render code for while on the line confirmation screen
 
-        pygame.display.update()
+        pygame.display.update()     # Redraw the display
 
     def cleanup(self):
-        pygame.quit()
+        pygame.quit()   # Quit pygame stuff
 
     def execute(self):
+        """
+        Main loop method of the program
+        """
+
         if self.init() == False:
-            self._running = False
+            self._running = False   # If failed to init, never enter the loop and exit the program
         
         while self._running:
             for event in pygame.event.get():
@@ -217,10 +220,10 @@ class App():
             self.loop()
             self.render()
 
-            pygame.time.delay(15)
+            pygame.time.delay(15)   # Delay to run at about 60 updates per second
         
-        self.cleanup()
+        self.cleanup()  # Cleanup and exit pygame
 
 if __name__ == "__main__":
-    app = App(1600, 900)
-    app.execute()
+    app = App(1600, 900)    # Initialize the app at a size of 1600 pixels wide and 900 pixels high
+    app.execute()   # Start the program

@@ -7,6 +7,7 @@ By Dean Lawrence
 
 import serial
 import enum
+import time
 
 class Color(enum.Enum):
     Blue = 1
@@ -115,3 +116,4 @@ class GcodeGeneration():
         """
 
         self.ser.write(final_string)
+        time.sleep(1)

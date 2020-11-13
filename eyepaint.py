@@ -9,6 +9,7 @@ appY = 900
 
 import pygame
 import enum
+import math
 from sklearn import linear_model
 
 from eyelib import GazeEstimationThread
@@ -36,6 +37,7 @@ class Color(enum.Enum):
     ColorSelect = 7
     ToolSelect = 8
     Trim = 9
+    Confirmation = 10
 
 # Enum for the types of tools
 class Tool(enum.Enum):
@@ -118,65 +120,131 @@ class ColorButton():
 
         pygame.draw.rect(screen, self.color, pygame.Rect(self.cx - self.width / 2, self.cy - self.height / 2, self.width, self.height))
 
-
-
-class ToolButton():
-    def __init__(self, image_path, steps=90):
-        pass
-
-    def contains(self, x, y):
-        pass
-
-    def draw(self, screen):
-        pass
-
-class CanvasButton():
-    def __init__(self, appWidth, appHeight, gridSize, steps=90):
+class Canvas():
+    def __init__(self, appWidth, appHeight, gridSize):
         self.cx = appWidth * (1/2)
         self.cy = appHeight * (1/2)
-        #pygame.draw.rect(_screen, (255,255,255), (appWidth-(appHeight * (1/2)), 0, appHeight, appHeight))
         
-        #self.active_width = active_width
-        #self.active_height = active_height
+        self.appWidth = appWidth
+        self.appHeight = appHeight
+        
+        self.gridSize = gridSize
 
-        #self.increment = increment
-        self.crad = 0
-
-        self.step = self.set_steps = steps
+        self.point = []
+        self.buttons = []
+    
+    def contains(self, x, y):
+        pass
     
     def reset(self):
+        pass
+
+    def get_step (self):
+        pass
+
+    def buttonGridSetup(self):
+        i = 0
+        while i <= (self.gridSize*self.gridSize):
+            i = i + 1
+            self.point.append(0)
+        
+            
+    
+    def draw(self, screen):
+
+        pygame.draw.rect(screen, (255,255,255), pygame.Rect((self.appWidth-self.appHeight)/2, 0, self.appHeight, self.appHeight))
+        
+        
+
+class CanvasButton():
+    def __init__(self, cx, cy, radius, steps=30):
+        
+        self.cx = int(cx)    # Center x position
+        self.cy = int(cy)    # Center y position
+        self.set_radius = self.radius = radius
+        
+        self.step = self.set_steps = steps  # Total number of steps in the update
+
+        self.color = (255, 255, 255)
+    
+    def reset(self):
+        """
+        Resets the steps and width and height of the button to default
+        """
         self.step = self.set_steps
-        self.crad = 0
+        self.radius = self.set_radius
+        self.color = (255, 255, 255)
 
     def decrement(self, ticks=1):
+        """
+        Decrements the steps and width and height
+        """
         self.step = max(0, self.step - ticks)
-
-        self.crad += self.increment
+        self.radius = int((self.step / self.set_steps) * self.set_radius)
+        if self.radius <= 4:
+            self.radius = 4
 
     def get_step(self):
-        return self.step
+        return int(self.step)
+    
+    def get_xy(self):
+        xy =[self.cx,self.cy]
+        return xy
 
     def contains(self, x, y):
         """
         Handles all of the containing code. If cursor is within active area, decrement, otherwise reset
         """
-        
-        if x >= self.cx - self.active_width / 2 and  \
-           x <= self.cx + self.active_width / 2 and  \
-           y >= self.cy - self.active_height / 2 and \
-           y <= self.cy + self.active_height / 2:
+        if x >= self.cx - self.set_radius and  \
+           x <= self.cx + self.set_radius and  \
+           y >= self.cy - self.set_radius and \
+           y <= self.cy + self.set_radius :
            
-            self.decrement()     # If the cursor is within the active area, decrement
+           self.decrement()     # If the cursor is within the active area, decrement
+           self.color = (229, 229, 229)
 
         else:
             self.reset()        # If the cursor is not within the active area, reset the size of the button
 
     def draw(self, screen):
         """
-        Draw the active circle on the pygame canvas
+        Draw the button on the pygame canvas
         """
-        pygame.draw.rect(screen, (255,255,255), pygame.Rect(appWidth-(appHeight * (1/2)), 0, appHeight, appHeight))
-        #pygame.draw.circle(_screen, (255, 0, 0), (self.cx, self.cy), int(self.crad))
+
+        pygame.draw.circle(screen, self.color, (self.cx, self.cy), self.radius, 2)
+        pygame.draw.circle(screen, (229,229,229), (self.cx, self.cy), 4)
+
+class BrushStroke ():
+    def __init__(self, tool, color, x1, y1, x2, y2, width = 5):
+        
+        self.tool = tool
+        self.color = color
+        self.x1 = x1
+        self.x2 = x2
+        self.y1 = y1
+        self.y2 = y2
+        self.width = width
+        self.distance = math.sqrt(abs(self.y2-self.y1)**2 + abs(self.x2-self.x1)**2)
+        
+        #copy from App
+        self.color_dict = {
+            Color.Blue:         (248, 202, 157),
+            Color.Green:        (197, 215, 192),
+            Color.Red:          (142, 201, 187),
+            Color.Yellow:       (251, 142, 126),
+            Color.Control:      (229, 229, 229),
+            Color.Text:         (125, 125, 125),
+            Color.ColorSelect:  (235, 189, 191),
+            Color.ToolSelect:   (143, 188, 145),
+            Color.Trim:         (229, 229, 229),
+            Color.Confirmation: (247, 249, 249)
+        }
+            
+    def draw(self, screen):
+        if self.tool == Tool.Line:
+            pygame.draw.line(screen, self.color_dict[self.color], (self.x1, self.y1), (self.x2, self.y2), self.width)
+        else:
+            pygame.draw.circle(screen, self.color_dict[self.color], (self.x1, self.y1), int(self.distance), self.width)
 
 class App():
     def __init__(self, width, height, canvas_divisions=4):
@@ -189,13 +257,28 @@ class App():
         self.canvas_divisions = canvas_divisions
 
         #self.state = ProgramState.Calibration       # Program begins in the calibrated state
-        self.state = ProgramState.ControlSelect
-        #self.state = ProgramState.Primary
+        #self.state = ProgramState.ControlSelect
+        self.state = ProgramState.Primary
         self.gaze_state = None
 
         self.active_color = Color.Blue  # Store an active color
         self.active_tool = Tool.Line    # Store an active tool
         self.active_control = Control.Mouse
+        
+        self.gridSize = 10
+        self.radius = int((self.height/self.gridSize)/2)
+        tempHeight = int(self.height)
+        tempWidth = int(self.width)
+        self.canvasButtons = [CanvasButton(((tempWidth-tempHeight)/2) + self.radius + ((i//self.gridSize)*self.radius*2), self.radius + ((i%self.gridSize)*self.radius*2), self.radius) for i in range(0,self.gridSize*self.gridSize)]
+
+        self.pointOne = (0, 0)
+        self.pointTwo = (0, 0)
+        self.distance = 0
+        self.commitStroke = 0
+        self.brushStrokeTemp = [0]
+        self.brushStroke_dict = []
+        self.count = 0
+
 
         # Dictionary to store color tuples for consistency between things later
         self.color_dict = {
@@ -207,7 +290,8 @@ class App():
             Color.Text:         (125, 125, 125),
             Color.ColorSelect:  (235, 189, 191),
             Color.ToolSelect:   (143, 188, 145),
-            Color.Trim:         (229, 229, 229)
+            Color.Trim:         (229, 229, 229),
+            Color.Confirmation: (247, 249, 249)
         }
 
         # Lists of buttons that are separated by program state
@@ -215,18 +299,22 @@ class App():
             ProgramState.ControlSelect: [ColorButton(self.width * (1/4), self.height * (1/2), 200, 200, self.color_dict[Color.Control], 200, 200, Control.Mouse, 30),
                                          ColorButton(self.width * (3/4), self.height * (1/2), 200, 200, self.color_dict[Color.Control], 200, 200, Control.Eye, 30)],
             ProgramState.Calibration:   [],
-            ProgramState.Primary:       [ColorButton(self.width * (1/8)-5, self.height * (1/2), self.width * (2/8)-10, self.height, self.color_dict[Color.ColorSelect], 200, 200, ProgramState.ColorSelect, 30),
-                                         ColorButton(self.width * (7/8)+5, self.height * (1/2), self.width * (2/8)-10, self.height, self.color_dict[Color.ToolSelect], 200, 200, ProgramState.ToolSelect, 30),
-                                         CanvasButton(self.width, self.height, 5)],
+            ProgramState.Primary:       [ColorButton(self.width * (1/8)-50, self.height * (1/2), self.width * (2/8)-100, self.height, self.color_dict[Color.ColorSelect], 200, 200, ProgramState.ColorSelect, 30),
+                                         ColorButton(self.width * (7/8)+50, self.height * (1/2), self.width * (2/8)-100, self.height, self.color_dict[Color.ToolSelect], 200, 200, ProgramState.ToolSelect, 30),],
             
             ProgramState.ColorSelect:   [ColorButton(self.width * (1/4), self.height * (1/4), 100, 100, self.color_dict[Color.Blue], self.width / 2, self.height / 2, Color.Blue, 90),     # Upper left color select button
                                          ColorButton(self.width * (3/4), self.height * (1/4), 100, 100, self.color_dict[Color.Green], self.width / 2, self.height / 2, Color.Green, 90),   # Upper right color select button
                                          ColorButton(self.width * (1/4), self.height * (3/4), 100, 100, self.color_dict[Color.Red], self.width / 2, self.height / 2, Color.Red, 90),      # Lower left color select button
-                                         ColorButton(self.width * (3/4), self.height * (3/4), 100, 100, self.color_dict[Color.Yellow], self.width / 2, self.height / 2, Color.Yellow, 90),90], # Lower right color select button
-            ProgramState.ToolSelect:    [],
-            ProgramState.Confirmation:  []
-        }
+                                         ColorButton(self.width * (3/4), self.height * (3/4), 100, 100, self.color_dict[Color.Yellow], self.width / 2, self.height / 2, Color.Yellow, 90)], # Lower right color select button
 
+            ProgramState.ToolSelect:    [ColorButton(self.width * (1/4), self.height * (1/2), 200, 200, self.color_dict[Color.Control], 200, 200, Tool.Line, 30),
+                                         ColorButton(self.width * (3/4), self.height * (1/2), 200, 200, self.color_dict[Color.Control], 200, 200, Tool.Circle, 30)],
+
+            ProgramState.Confirmation:  [ColorButton(self.width * (1/8), self.height * (1/2), 200, 200, self.color_dict[Color.Trim], 250, 250, 0, 15),
+                                         ColorButton(self.width * (7/8), self.height * (1/2), 200, 200, self.color_dict[Color.Trim], 250, 250, 1, 15)]
+
+        }
+    
         # Object that runs the gaze estimation in a separate thread
         # Deposits predictions into a queue that can be accessed through get()
         self.gaze_estimation = GazeEstimationThread(x_estimator=linear_model.Ridge(alpha=0.9),
@@ -246,9 +334,12 @@ class App():
     def on_event(self, event):
         if event.type == pygame.QUIT:   # Kill app in case of a quit
             self._running = False
-        
+            
+        # C O N T R O L   S E L E C T   E V E N T
         if self.state == ProgramState.ControlSelect:
             pass
+        
+        # C A L I B R A T I O N   E V E N T
         elif self.state == ProgramState.Calibration:
             
             # Temporary calibration routine where clicks add samples
@@ -256,15 +347,19 @@ class App():
                 self.gaze_estimation.add_sample(pygame.mouse.get_pos()) 
                 print("New sample added")
                 
+        # P R I M A R Y   E V E N T        
         elif self.state == ProgramState.Primary:
             pass    # Do event handling for the primary canvas screen
-
+        
+        # C O L O R   S E L E C T   E V E N T 
         elif self.state == ProgramState.ColorSelect:
             pass    # Do event handling for the color select screen
-
+        
+        # T O O L   S E L E C T   E V E N T
         elif self.state == ProgramState.ToolSelect:
             pass    # Do event handling for the tool select screen
 
+        # C O M F I R M A T I O N   E V E N T
         elif self.state == ProgramState.Confirmation:
             pass    # Do event handling for the confirmation screen
     
@@ -302,6 +397,17 @@ class App():
                     button.contains(mouseXY[0], mouseXY[1])
                     if button.get_step() == 0:
                         self.state = button.get_buttonType()
+                for i in range (0, self.gridSize*self.gridSize):
+                    self.canvasButtons[i].contains(mouseXY[0], mouseXY[1])
+                    if self.canvasButtons[i].get_step() <= 5:
+                        if self.pointOne == (0,0):
+                            self.pointOne = self.canvasButtons[i].get_xy()
+                        else:
+                            self.pointTwo = self.canvasButtons[i].get_xy()
+                    if self.pointOne != self.pointTwo != (0,0):
+                        self.state = ProgramState.Confirmation
+                        self.brushStrokeTemp = BrushStroke(self.active_tool, self.active_color, self.pointOne[0], self.pointOne[1], self.pointTwo[0], self.pointTwo[1])
+
             #Eye Control
             else:
                 if self.gaze_state != None: # If there is a gaze state, update the buttons
@@ -309,6 +415,16 @@ class App():
                         button.contains(self.gaze_state.getX(), self.gaze_state.getY())
                         if button.get_step() == 0:
                             self.state = button.get_buttonType()
+                    for i in range (0, self.gridSize*self.gridSize):
+                        self.canvasButtons[i].contains(self.gaze_state.getX(), self.gaze_state.getY())
+                        if self.canvasButtons[i].get_step() <= 5:
+                            if self.pointOne == (0,0):
+                                self.pointOne = self.canvasButtons[i].get_xy()
+                            else:
+                                self.pointTwo = self.canvasButtons[i].get_xy()
+                        if self.pointOne != self.pointTwo != (0,0):
+                            self.state = ProgramState.Confirmation
+                            self.brushStrokeTemp = [BrushStroke(self.active_tool, self.active_color, self.pointOne[0], self.pointOne[1], self.pointTwo[0], self.pointTwo[1])]
                 
         # C O L O R   S E L E C T   L O O P 
         elif self.state == ProgramState.ColorSelect:
@@ -318,7 +434,7 @@ class App():
                     button.contains(mouseXY[0], mouseXY[1])
                     if button.get_step() == 0:
                         self.active_color = button.get_buttonType()
-                        self.state == ProgramState.Primary
+                        self.state = ProgramState.Primary
             #Eye Control
             else:    
                 if self.gaze_state != None: # If there is a gaze state, update the buttons
@@ -328,18 +444,59 @@ class App():
                             self.active_color = button.get_buttonType()
                             self.state == ProgramState.Primary
 
+
         # T O O L   S E L E C T   L O O P
         elif self.state == ProgramState.ToolSelect:
-            pass    # Do update program stuff for the tool select screen
-
+             #Mouse Control
+            if self.active_control == Control.Mouse:
+                for button in self.button_dict[self.state]: # Update all the buttons in the button dictionary
+                    button.contains(mouseXY[0], mouseXY[1])
+                    if button.get_step() == 0:
+                        self.active_tool = button.get_buttonType()
+                        self.state = ProgramState.Primary
+            #Eye Control
+            else:    
+                if self.gaze_state != None: # If there is a gaze state, update the buttons
+                    for button in self.button_dict[self.state]: # Update all the buttons in the button dictionary
+                        button.contains(self.gaze_state.getX(), self.gaze_state.getY())
+                        if button.get_step() == 0:
+                            self.active_tool = button.get_buttonType()
+                            self.state == ProgramState.Primary
+                            
+        # C O N F I R M A T I O N   L O O P
         elif self.state == ProgramState.Confirmation:
-            pass    # Do update program stuff for the confirmation screen
+            #Mouse Control
+            if self.active_control == Control.Mouse:
+                for button in self.button_dict[self.state]: # Update all the buttons in the button dictionary
+                    button.contains(mouseXY[0], mouseXY[1])
+                    if button.get_step() == 0:
+                        self.CommitStroke = button.get_buttonType()
+                        if self.CommitStroke == 1:
+                            #Add current brush stroke to commited brush stroke list
+                            self.brushStroke_dict.append(self.brushStrokeTemp)
+                            self.count = self.count + 1
+                        
+                        #Reset the canvas for next brush stroke and move back to primary
+                        self.pointOne = (0, 0)
+                        self.pointTwo = (0, 0)
+                        self.CommitStroke = 0
+                        self.state = ProgramState.Primary
+            #Eye Control
+            else:    
+                if self.gaze_state != None: # If there is a gaze state, update the buttons
+                    for button in self.button_dict[self.state]: # Update all the buttons in the button dictionary
+                        button.contains(self.gaze_state.getX(), self.gaze_state.getY())
+                        if button.get_step() == 0:
+                            self.CommitStroke = button.get_buttonType()
+                            self.state == ProgramState.Primary
     
     def render(self):
         self._screen.fill((255,255,255))  # Clear screen
         
         # C ON T R O L   S E L E C T   R E N D E R
         if self.state == ProgramState.ControlSelect:
+            for button in self.button_dict[self.state]:     # Draw all buttons for a given screen
+                button.draw(self._screen)
             Text(self.width * (1/4), (self.height * (1/2))+225, self.color_dict[Color.Text], 32, 'Mouse', self._screen)
             Text(self.width * (3/4), (self.height * (1/2))+225, self.color_dict[Color.Text], 32, 'Eye Tracking', self._screen)
 
@@ -350,24 +507,81 @@ class App():
         # P R I M A R Y   R E N D E R
         elif self.state == ProgramState.Primary:
             self._screen.fill(self.color_dict[Color.Trim])
-            #if self.gaze_state != None:
-            #    pygame.draw.circle(self._screen, (0,0,0), (self.gaze_state.getX(),self.gaze_state.getY()), 10)
+            pygame.draw.rect(self._screen, (255,255,255), pygame.Rect((self.width-self.height)/2, 0, self.height, self.height))
+            for button in self.button_dict[self.state]:     # Draw all buttons for a given screen
+                button.draw(self._screen)
+            
+            Text(self.width * (1/8)-50, (self.height * (1/2))-16, self.color_dict[Color.Text], 32, 'Color', self._screen)
+            Text(self.width * (1/8)-50, (self.height * (1/2))+16, self.color_dict[Color.Text], 32, 'Select', self._screen)
+            Text(self.width * (7/8)+50, (self.height * (1/2))-16, self.color_dict[Color.Text], 32, 'Tool', self._screen)
+            Text(self.width * (7/8)+50, (self.height * (1/2))+16, self.color_dict[Color.Text], 32, 'Select', self._screen)
+            #Canvas stuff
+            for i in range (0, self.gridSize*self.gridSize):
+                self.canvasButtons[i].draw(self._screen)
+                
+            if self.pointOne != self.pointTwo != (0,0):
+                self.brushStrokeTemp.draw(self._screen)
+            
+            for i in range (0, self.count):
+                self.brushStroke_dict[i].draw(self._screen)
 
         # C O L O R   S E L E C T   R E N D E R
         elif self.state == ProgramState.ColorSelect:
-            pass    # Render code for while in the color select screen
+            for button in self.button_dict[self.state]:     # Draw all buttons for a given screen
+                button.draw(self._screen)
 
         # T O O L   S E L E C T   R E N D E R
         elif self.state == ProgramState.ToolSelect:
-            pass    # Render code for while in the tool select screen
+            for button in self.button_dict[self.state]:     # Draw all buttons for a given screen
+                button.draw(self._screen)
+            Text(self.width * (1/4), (self.height * (1/2))+225, self.color_dict[Color.Text], 32, 'Line', self._screen)
+            Text(self.width * (3/4), (self.height * (1/2))+225, self.color_dict[Color.Text], 32, 'Circle', self._screen)
+
 
         # C O N F I R M A T I O N   R E N D E R
         elif self.state == ProgramState.Confirmation:
-            pass    # Render code for while on the line confirmation screen
-        
-        for button in self.button_dict[self.state]:     # Draw all buttons for a given screen
-            button.draw(self._screen)
-
+            #COPY OF PRIMARY RENDER ---------------------------------------------------------
+            self._screen.fill(self.color_dict[Color.Trim])
+            pygame.draw.rect(self._screen, (255,255,255), pygame.Rect((self.width-self.height)/2, 0, self.height, self.height))
+            for button in self.button_dict[self.state]:     # Draw all buttons for a given screen
+                button.draw(self._screen)
+            
+            Text(self.width * (1/8)-50, (self.height * (1/2))-16, self.color_dict[Color.Text], 32, 'Color', self._screen)
+            Text(self.width * (1/8)-50, (self.height * (1/2))+16, self.color_dict[Color.Text], 32, 'Select', self._screen)
+            Text(self.width * (7/8)+50, (self.height * (1/2))-16, self.color_dict[Color.Text], 32, 'Tool', self._screen)
+            Text(self.width * (7/8)+50, (self.height * (1/2))+16, self.color_dict[Color.Text], 32, 'Select', self._screen)
+            #Canvas stuff
+            for i in range (0, self.gridSize*self.gridSize):
+                self.canvasButtons[i].draw(self._screen)
+                
+            if self.pointOne != self.pointTwo != (0,0):
+                self.brushStrokeTemp.draw(self._screen)
+            
+            for i in range (0, self.count):
+                self.brushStroke_dict[i].draw(self._screen)    
+                
+            #if self.pointOne != self.pointTwo and self.pointOne != (0,0) and self.pointTwo != (0,0):
+             #   self.distance = math.sqrt(abs(self.pointTwo[1]-self.pointOne[1])**2 + abs(self.pointTwo[0]-self.pointOne[0])**2)
+              #  if self.active_tool == Tool.Line:
+               #     pygame.draw.line(self._screen, self.color_dict[self.active_color], self.pointOne, self.pointTwo, 5)
+                #else:
+                 #   pygame.draw.circle(self._screen, self.color_dict[self.active_color],self.pointOne, int(self.distance), 5)
+            #-----------------------------------------------------------------------------
+            pygame.draw.rect(self._screen, self.color_dict[Color.ColorSelect], pygame.Rect(0, 0, self.width * (2/8)-100, self.height))
+            pygame.draw.rect(self._screen, self.color_dict[Color.ToolSelect], pygame.Rect((self.width * (2/8))+self.height, 0, self.width * (2/8)-100, self.height))
+            
+            pygame.draw.rect(self._screen, self.color_dict[Color.Confirmation], pygame.Rect(20, (self.height/2)-200, self.width-40, 400))
+            pygame.draw.rect(self._screen, self.color_dict[Color.Text], pygame.Rect(20, (self.height/2)-200, self.width-40, 400),8)
+            
+            for button in self.button_dict[self.state]:     # Draw all buttons for a given screen
+                button.draw(self._screen)
+            
+            Text(200, (self.height * (1/2))-30, self.color_dict[Color.Text], 42, 'Cancel', self._screen)
+            Text(200, (self.height * (1/2))+30, self.color_dict[Color.Text], 42, 'Stroke', self._screen)
+            Text(self.width -200, (self.height * (1/2))-30, self.color_dict[Color.Text], 42, 'Commit', self._screen)
+            Text(self.width -200, (self.height * (1/2))+30, self.color_dict[Color.Text], 42, 'Stroke', self._screen)
+                                   
+            
         pygame.display.update()     # Redraw the display
 
     def cleanup(self):

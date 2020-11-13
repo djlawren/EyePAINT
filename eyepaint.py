@@ -3,21 +3,32 @@ EyePAINT
 
 By Hannah Imboden and Dean Lawrence
 """
-# Initialize the app at a size of 1600 pixels wide and 900 pixels high
-appX = 1600
-appY = 900
 
 import pygame
 import enum
 import math
+import argparse
 from sklearn import linear_model
 
-from eyelib import GazeEstimationThread
+from eyelib import GazeEstimationThread, GazeState
 from eyelib import GcodeGeneration
-from eyelib import ProgramState, Color, Tool, Control, Text, ColorButton, Canvas, CanvasButton, BrushStroke
+from eyelib import ProgramState, Color, Tool, Control, Text, ColorButton, Canvas, CanvasButton, BrushStroke, CalibrationDot
+
+
+class MockGazeEstimationThread():
+    def get(self):
+        pos = pygame.mouse.get_pos()
+
+        return GazeState(pos[0], pos[1])
+    
+    def add_sample(self, pos):
+        pass
+
+    def train(self):
+        pass
 
 class App():
-    def __init__(self, width, height, canvas_divisions=4):
+    def __init__(self, width, height, canvas_divisions=10, calibration_dots=4, port="COM3"):
         self._running = True
         self._screen = None
         self.size = self.width, self.height = width, height     # Hardcoded dimensions for the window
@@ -28,14 +39,14 @@ class App():
 
         #self.state = ProgramState.Calibration       # Program begins in the calibrated state
         #self.state = ProgramState.ControlSelect
-        self.state = ProgramState.Primary
+        self.state = ProgramState.Calibration
         self.gaze_state = None
 
         self.active_color = Color.Blue  # Store an active color
         self.active_tool = Tool.Line    # Store an active tool
         self.active_control = Control.Mouse
         
-        self.gridSize = 10
+        self.gridSize = canvas_divisions
         self.radius = int((self.height/self.gridSize)/2)
         tempHeight = int(self.height)
         tempWidth = int(self.width)
@@ -64,11 +75,15 @@ class App():
             Color.Confirmation: (247, 249, 249)
         }
 
+        self.calibration_dots = calibration_dots
+        calibration_width = self.width * (1 / self.calibration_dots)
+        calibration_height = self.height * (1 / self.calibration_dots)
+
         # Lists of buttons that are separated by program state
         self.button_dict = {
-            ProgramState.ControlSelect: [ColorButton(self.width * (1/4), self.height * (1/2), 200, 200, self.color_dict[Color.Control], 200, 200, Control.Mouse, 30),
-                                         ColorButton(self.width * (3/4), self.height * (1/2), 200, 200, self.color_dict[Color.Control], 200, 200, Control.Eye, 30)],
-            ProgramState.Calibration:   [],
+            ProgramState.Calibration:   [CalibrationDot((calibration_width / 2) + calibration_width * (i % self.calibration_dots),
+                                                        (calibration_height / 2) + calibration_height * (i // self.calibration_dots),
+                                                        100) for i in range(calibration_dots * calibration_dots)],
             ProgramState.Primary:       [ColorButton(self.width * (1/8)-50, self.height * (1/2), self.width * (2/8)-100, self.height, self.color_dict[Color.ColorSelect], 200, 200, ProgramState.ColorSelect, 30),
                                          ColorButton(self.width * (7/8)+50, self.height * (1/2), self.width * (2/8)-100, self.height, self.color_dict[Color.ToolSelect], 200, 200, ProgramState.ToolSelect, 30),],
             
@@ -84,9 +99,12 @@ class App():
                                          ColorButton(self.width * (7/8), self.height * (1/2), 200, 200, self.color_dict[Color.Trim], 250, 250, 1, 15)]
 
         }
+
+        self.active_calibration_dot = -1
     
         # Object that runs the gaze estimation in a separate thread
         # Deposits predictions into a queue that can be accessed through get()
+        """
         self.gaze_estimation = GazeEstimationThread(x_estimator=linear_model.Ridge(alpha=0.9),
                                                     y_estimator=linear_model.Ridge(alpha=0.9),
                                                     face_cascade_path="./classifiers/haarcascade_frontalface_default.xml",
@@ -94,6 +112,10 @@ class App():
                                                     shape_predictor_path="./classifiers/shape_predictor_68_face_landmarks.dat",
                                                     width=self.width,
                                                     height=self.height)
+        """
+
+        #self.gcode_generation = GcodeGeneration("COM3", 250000)
+        self.gaze_estimation = MockGazeEstimationThread()
     
     def init(self):
         pygame.init()   # Init pygame stuff
@@ -105,17 +127,9 @@ class App():
         if event.type == pygame.QUIT:   # Kill app in case of a quit
             self._running = False
             
-        # C O N T R O L   S E L E C T   E V E N T
-        if self.state == ProgramState.ControlSelect:
-            pass
-        
         # C A L I B R A T I O N   E V E N T
-        elif self.state == ProgramState.Calibration:
-            
-            # Temporary calibration routine where clicks add samples
-            if event.type == pygame.MOUSEBUTTONUP:
-                self.gaze_estimation.add_sample(pygame.mouse.get_pos()) 
-                print("New sample added")
+        if self.state == ProgramState.Calibration:
+            pass
                 
         # P R I M A R Y   E V E N T        
         elif self.state == ProgramState.Primary:
@@ -135,144 +149,100 @@ class App():
     
     def loop(self):
         gaze_location = self.gaze_estimation.get()  # Get the current gaze estimation position from the queue
-        mouseXY = pygame.mouse.get_pos()
-        
+
         if gaze_location != None:   # If there was a location, update the classes known location
             self.gaze_state = gaze_location
         
-        # C O N T R O L   S E L E C T   L O O P
-        if self.state == ProgramState.ControlSelect:
-            for button in self.button_dict[self.state]: # Update all the buttons in the button dictionary
-                button.contains(mouseXY[0], mouseXY[1])
-                if button.get_step() == 0:
-                    self.active_control = button.get_buttonType()
-                    if self.active_control == Control.Mouse:
-                        self.state = ProgramState.Primary
-                    else:
-                        self.state = ProgramState.Calibration
-        
         # C A L I B R A T I O N   L O O P
-        elif self.state == ProgramState.Calibration:
+        if self.state == ProgramState.Calibration:
             
+            if self.active_calibration_dot == -1:
+                #time.sleep(4)
+                self.active_calibration_dot += 1
+            
+            dot = self.button_dict[self.state][self.active_calibration_dot]
+
+            if dot.get_step() == dot.set_steps:
+                dot.reset()
+            
+            dot.decrement()
+
+            if dot.get_step() == 0:
+                dot.crad = 0
+                self.gaze_estimation.add_sample((dot.get_x(), dot.get_y()))
+                self.active_calibration_dot += 1
+
+            if self.active_calibration_dot == self.calibration_dots * self.calibration_dots:
+                self.gaze_estimation.train()
+                self.state = ProgramState.Primary
+
+            """
             # If 10 samples of data are added, train the regressors and move onto next state
             if self.gaze_estimation.get_sample_count() > 10:
                 self.gaze_estimation.train()
                 self.state = ProgramState.Primary
+            """
 
         # P R I M A R Y   L O O P
         elif self.state == ProgramState.Primary:
-            #Mouse Control
-            if self.active_control == Control.Mouse:
-                for button in self.button_dict[self.state]: # Update all the buttons in the button dictionary
-                    button.contains(mouseXY[0], mouseXY[1])
-                    if button.get_step() == 0:
-                        self.state = button.get_buttonType()
-                for i in range (0, self.gridSize*self.gridSize):
-                    self.canvasButtons[i].contains(mouseXY[0], mouseXY[1])
-                    if self.canvasButtons[i].get_step() <= 5:
-                        if self.pointOne == (0,0):
-                            self.pointOne = self.canvasButtons[i].get_xy()
-                        else:
-                            self.pointTwo = self.canvasButtons[i].get_xy()
-                    if self.pointOne != self.pointTwo != (0,0):
-                        self.state = ProgramState.Confirmation
-                        self.brushStrokeTemp = BrushStroke(self.active_tool, self.active_color, self.pointOne[0], self.pointOne[1], self.pointTwo[0], self.pointTwo[1])
+            for button in self.button_dict[self.state]: # Update all the buttons in the button dictionary
+                button.contains(self.gaze_state.getX(), self.gaze_state.getY())
+                if button.get_step() == 0:
+                    self.state = button.get_buttonType()
 
-            #Eye Control
-            else:
-                if self.gaze_state != None: # If there is a gaze state, update the buttons
-                    for button in self.button_dict[self.state]: # Update all the buttons in the button dictionary
-                        button.contains(self.gaze_state.getX(), self.gaze_state.getY())
-                        if button.get_step() == 0:
-                            self.state = button.get_buttonType()
-                    for i in range (0, self.gridSize*self.gridSize):
-                        self.canvasButtons[i].contains(self.gaze_state.getX(), self.gaze_state.getY())
-                        if self.canvasButtons[i].get_step() <= 5:
-                            if self.pointOne == (0,0):
-                                self.pointOne = self.canvasButtons[i].get_xy()
-                            else:
-                                self.pointTwo = self.canvasButtons[i].get_xy()
-                        if self.pointOne != self.pointTwo != (0,0):
-                            self.state = ProgramState.Confirmation
-                            self.brushStrokeTemp = [BrushStroke(self.active_tool, self.active_color, self.pointOne[0], self.pointOne[1], self.pointTwo[0], self.pointTwo[1])]
+            for i in range (0, self.gridSize*self.gridSize):
+                self.canvasButtons[i].contains(self.gaze_state.getX(), self.gaze_state.getY())
+                if self.canvasButtons[i].get_step() <= 5:
+                    if self.pointOne == (0,0):
+                        self.pointOne = self.canvasButtons[i].get_xy()
+                    else:
+                        self.pointTwo = self.canvasButtons[i].get_xy()
+                if self.pointOne != self.pointTwo != (0,0):
+                    self.state = ProgramState.Confirmation
+                    self.brushStrokeTemp = BrushStroke(self.active_tool, self.active_color, self.pointOne[0], self.pointOne[1], self.pointTwo[0], self.pointTwo[1])
                 
         # C O L O R   S E L E C T   L O O P 
         elif self.state == ProgramState.ColorSelect:
-            #Mouse Control
-            if self.active_control == Control.Mouse:
-                for button in self.button_dict[self.state]: # Update all the buttons in the button dictionary
-                    button.contains(mouseXY[0], mouseXY[1])
-                    if button.get_step() == 0:
-                        self.active_color = button.get_buttonType()
-                        self.state = ProgramState.Primary
-            #Eye Control
-            else:    
-                if self.gaze_state != None: # If there is a gaze state, update the buttons
-                    for button in self.button_dict[self.state]: # Update all the buttons in the button dictionary
-                        button.contains(self.gaze_state.getX(), self.gaze_state.getY())
-                        if button.get_step() == 0:
-                            self.active_color = button.get_buttonType()
-                            self.state == ProgramState.Primary
+            for button in self.button_dict[self.state]: # Update all the buttons in the button dictionary
+                button.contains(self.gaze_state.getX(), self.gaze_state.getY())
+                if button.get_step() == 0:
+                    self.active_color = button.get_buttonType()
+                    self.state = ProgramState.Primary
 
 
         # T O O L   S E L E C T   L O O P
         elif self.state == ProgramState.ToolSelect:
-             #Mouse Control
-            if self.active_control == Control.Mouse:
-                for button in self.button_dict[self.state]: # Update all the buttons in the button dictionary
-                    button.contains(mouseXY[0], mouseXY[1])
-                    if button.get_step() == 0:
-                        self.active_tool = button.get_buttonType()
-                        self.state = ProgramState.Primary
-            #Eye Control
-            else:    
-                if self.gaze_state != None: # If there is a gaze state, update the buttons
-                    for button in self.button_dict[self.state]: # Update all the buttons in the button dictionary
-                        button.contains(self.gaze_state.getX(), self.gaze_state.getY())
-                        if button.get_step() == 0:
-                            self.active_tool = button.get_buttonType()
-                            self.state == ProgramState.Primary
+            for button in self.button_dict[self.state]: # Update all the buttons in the button dictionary
+                button.contains(self.gaze_state.getX(), self.gaze_state.getY())
+                if button.get_step() == 0:
+                    self.active_tool = button.get_buttonType()
+                    self.state = ProgramState.Primary
                             
         # C O N F I R M A T I O N   L O O P
         elif self.state == ProgramState.Confirmation:
-            #Mouse Control
-            if self.active_control == Control.Mouse:
-                for button in self.button_dict[self.state]: # Update all the buttons in the button dictionary
-                    button.contains(mouseXY[0], mouseXY[1])
-                    if button.get_step() == 0:
-                        self.CommitStroke = button.get_buttonType()
-                        if self.CommitStroke == 1:
-                            #Add current brush stroke to commited brush stroke list
-                            self.brushStroke_dict.append(self.brushStrokeTemp)
-                            self.count = self.count + 1
+            for button in self.button_dict[self.state]: # Update all the buttons in the button dictionary
+                button.contains(self.gaze_state.getX(), self.gaze_state.getY())
+                if button.get_step() == 0:
+                    self.CommitStroke = button.get_buttonType()
+                    if self.CommitStroke == 1:
+                        #Add current brush stroke to commited brush stroke list
+                        self.brushStroke_dict.append(self.brushStrokeTemp)
+                        self.count = self.count + 1
                         
-                        #Reset the canvas for next brush stroke and move back to primary
-                        self.pointOne = (0, 0)
-                        self.pointTwo = (0, 0)
-                        self.CommitStroke = 0
-                        self.state = ProgramState.Primary
-            #Eye Control
-            else:    
-                if self.gaze_state != None: # If there is a gaze state, update the buttons
-                    for button in self.button_dict[self.state]: # Update all the buttons in the button dictionary
-                        button.contains(self.gaze_state.getX(), self.gaze_state.getY())
-                        if button.get_step() == 0:
-                            self.CommitStroke = button.get_buttonType()
-                            self.state == ProgramState.Primary
+                    #Reset the canvas for next brush stroke and move back to primary
+                    self.pointOne = (0, 0)
+                    self.pointTwo = (0, 0)
+                    self.CommitStroke = 0
+                    self.state = ProgramState.Primary
     
     def render(self):
         self._screen.fill((255,255,255))  # Clear screen
-        
-        # C ON T R O L   S E L E C T   R E N D E R
-        if self.state == ProgramState.ControlSelect:
-            for button in self.button_dict[self.state]:     # Draw all buttons for a given screen
-                button.draw(self._screen)
-            Text(self.width * (1/4), (self.height * (1/2))+225, self.color_dict[Color.Text], 32, 'Mouse', self._screen)
-            Text(self.width * (3/4), (self.height * (1/2))+225, self.color_dict[Color.Text], 32, 'Eye Tracking', self._screen)
 
         # C A L I B R A T I O N   R E N D E R
-        elif self.state == ProgramState.Calibration:
-            pass    # Render code for while on the calibration screen
+        if self.state == ProgramState.Calibration:
+            
+            for button in self.button_dict[self.state]:
+                button.draw(self._screen)
 
         # P R I M A R Y   R E N D E R
         elif self.state == ProgramState.Primary:
@@ -372,10 +342,21 @@ class App():
             self.loop()
             self.render()
 
-            pygame.time.delay(15)   # Delay to run at about 60 updates per second
+            pygame.time.delay(25)   # Delay to run at about 60 updates per second
         
         self.cleanup()  # Cleanup and exit pygame
 
 if __name__ == "__main__":
-    app = App(appX, appY)    # Initialize the app at a size of 1600 pixels wide and 900 pixels high
+
+    parser = argparse.ArgumentParser()
+
+    parser.add_argument("--width", type=int, default=1600, help="Width for window to be")
+    parser.add_argument("--height", type=int, default=900, help="Height for window to be")
+    parser.add_argument("--canvas_divisions", type=int, default=8, help="Number divisions for the canvas")
+    parser.add_argument("--calibration_dots", type=int, default=4, help="Width and height of calibration dot matrix")
+    parser.add_argument("--port", type=str, default="COM3", help="Serial port to open connection to CNC with")
+
+    args = parser.parse_args()
+
+    app = App(args.width, args.height, canvas_divisions=args.canvas_divisions, calibration_dots=args.calibration_dots, port=args.port)    # Initialize the app at a size of 1600 pixels wide and 900 pixels high
     app.execute()   # Start the program

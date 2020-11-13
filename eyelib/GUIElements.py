@@ -7,6 +7,7 @@ By Hannah Imboden and Dean Lawrence
 
 import pygame
 import enum
+import math
 
 # Enum for different screens that exist in the program
 class ProgramState(enum.Enum):
@@ -15,7 +16,6 @@ class ProgramState(enum.Enum):
     ColorSelect = 3
     ToolSelect = 4
     Confirmation = 5
-    ControlSelect = 6
 
 # Enums for types of colors
 class Color(enum.Enum):
@@ -48,6 +48,40 @@ def Text(cx, cy, color, fontSize, textStr, _screen):
     textRect = text.get_rect()
     textRect.center = (cx,cy)
     _screen.blit(text, textRect)    
+
+class CalibrationDot():
+    def __init__(self, cx, cy, radius, steps=90):
+        self.cx = cx
+        self.cy = cy
+        self.radius = radius
+        self.step = self.set_steps = steps
+
+        self.crad = 0
+
+    def reset(self):
+        self.step = self.set_steps
+        self.crad = self.radius
+
+    def decrement(self, ticks=1):
+        self.step = max(0, self.step - ticks)
+        self.crad = max(0, self.crad - ticks)
+
+    def get_step(self):
+        return self.step
+
+    def get_x(self):
+        return self.cx
+    
+    def get_y(self):
+        return self.cy
+    
+    def draw(self, screen):
+        pygame.draw.circle(screen, (229, 229, 229), (int(self.cx), int(self.cy)), self.crad)
+
+        if self.crad > 5:
+            pygame.draw.circle(screen, (150, 150, 150), (int(self.cx), int(self.cy)), 5)
+            pygame.draw.circle(screen, (125, 125, 125), (int(self.cx), int(self.cy)), self.crad, 5)
+        
 
 # If it has an interface of contains and draw, it can probably be a button
 class ColorButton():

@@ -39,7 +39,7 @@ class App():
 
         #self.state = ProgramState.Calibration       # Program begins in the calibrated state
         #self.state = ProgramState.ControlSelect
-        self.state = ProgramState.Calibration
+        self.state = ProgramState.Primary
         self.gaze_state = None
 
         self.active_color = Color.Blue  # Store an active color
@@ -226,8 +226,9 @@ class App():
                     self.CommitStroke = button.get_buttonType()
                     if self.CommitStroke == 1:
                         #Add current brush stroke to commited brush stroke list
-                        self.brushStroke_dict.append(self.brushStrokeTemp)
-                        self.count = self.count + 1
+                        if self.brushStrokeTemp.errorCheck(self.height, self.width) == False:
+                            self.brushStroke_dict.append(self.brushStrokeTemp)
+                            self.count = self.count + 1
                         
                     #Reset the canvas for next brush stroke and move back to primary
                     self.pointOne = (0, 0)

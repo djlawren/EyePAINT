@@ -272,3 +272,23 @@ class BrushStroke ():
             pygame.draw.line(screen, self.color_dict[self.color], (self.x1, self.y1), (self.x2, self.y2), self.width)
         else:
             pygame.draw.circle(screen, self.color_dict[self.color], (self.x1, self.y1), int(self.distance), self.width)
+    def errorCheck(self, width, height):
+        if self.tool == Tool.Circle:
+            if self.distance >= self.x1-((width-height)/2):
+                return True
+            elif self.distance >= ((width-height)/2)+height-self.x1:
+                return True
+            elif self.distance >= self.y1:
+                return True
+            elif self.distance >= height - self.y1:
+                return True
+            else:
+                return False           
+        else:
+            return False
+        
+        
+        
+        
+        
+        

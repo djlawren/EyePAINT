@@ -376,20 +376,10 @@ class FeatureExtraction():
         #             self.current_state["right_pupil"], 
         #             self.current_state["left_pupil"]]
         
-        right_pupil_x = self.current_state["right_pupil"][0] + self.current_state["right_eye"][0]
-        right_pupil_y = self.current_state["right_pupil"][1] + self.current_state["right_eye"][1]
-        left_pupil_x = self.current_state["left_pupil"][0] + self.current_state["left_eye"][0]
-        left_pupil_y = self.current_state["left_pupil"][1] + self.current_state["left_eye"][1]
-
-        temp_list = [#self.current_state["right_eye"],
-                     #self.current_state["left_eye"],
-                     self.current_state["right_pupil"],
-                     self.current_state["left_pupil"]]
-
-        final_list = []
-        for lst in temp_list:
-            for item in lst:
-                final_list.append(item)
+        right_pupil_x = (self.current_state["right_pupil"][0] + self.current_state["right_eye"][0]) / self.current_state["face"][2]
+        right_pupil_y = (self.current_state["right_pupil"][1] + self.current_state["right_eye"][1]) / self.current_state["face"][3]
+        left_pupil_x = (self.current_state["left_pupil"][0] + self.current_state["left_eye"][0]) / self.current_state["face"][2]
+        left_pupil_y = (self.current_state["left_pupil"][1] + self.current_state["left_eye"][1]) / self.current_state["face"][3]
 
         return [right_pupil_x, right_pupil_y, left_pupil_x, left_pupil_y]
     

@@ -7,6 +7,7 @@ By Dean Lawrence
 
 import numpy as np 
 import copy
+from sklearn.metrics import mean_squared_error
 
 class GazeState():
     def __init__(self, x, y):
@@ -34,6 +35,9 @@ class GazeEstimation():
 
         self.width = width
         self.height = height
+
+        self.x_test_errors = []
+        self.y_test_errors = []
 
         self._trained = False
 
@@ -71,6 +75,25 @@ class GazeEstimation():
         self.y_estimator.fit(y_predictors, y_labels)
 
         self._trained = True
+    
+    def test_data(self):
+        
+        x_predictors = np.array(self.data["x_predictors"])
+        y_predictors = np.array(self.data["y_predictors"])
+        
+        x_labels = np.array(self.data["x_labels"])
+        y_labels = np.array(self.data["y_labels"])
+
+        self.x_estimator.fit(x_predictors, x_labels)
+        self.y_estimator.fit(y_predictors, y_labels)
+
+        x_predictions = self.x_estimator.predict(x_predictors)
+        y_predictions = self.y_estimator.predict(y_predictors)
+
+        self.x_test_errors.append(mean_squared_error(x_predictions, x_labels))
+        self.y_test_errors.append(mean_squared_error(y_predictions, y_labels))
+
+        self._trained = False
 
     def predict(self, predictor):
 

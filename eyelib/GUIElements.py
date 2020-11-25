@@ -46,13 +46,14 @@ def Text(cx, cy, color, fontSize, textStr, _screen):
     _screen.blit(text, textRect)    
 
 class CalibrationDot():
-    def __init__(self, cx, cy, radius, steps=55):
+    def __init__(self, cx, cy, radius, steps=55, testing=False):
         self.cx = cx
         self.cy = cy
         self.radius = radius
         self.step = self.set_steps = steps
 
         self.crad = 0
+        self.testing = testing
 
     def reset(self):
         self.step = self.set_steps
@@ -72,7 +73,10 @@ class CalibrationDot():
         return self.cy
     
     def draw(self, screen):
-        pygame.draw.circle(screen, (229, 229, 229), (int(self.cx), int(self.cy)), self.crad)
+        if self.testing == False:
+            pygame.draw.circle(screen, (229, 229, 229), (int(self.cx), int(self.cy)), self.crad)
+        else:
+            pygame.draw.circle(screen, (251, 142, 126), (int(self.cx), int(self.cy)), self.crad)
 
         if self.crad > 5:
             pygame.draw.circle(screen, (150, 150, 150), (int(self.cx), int(self.cy)), 5)

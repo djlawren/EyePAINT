@@ -36,10 +36,6 @@ class Color(enum.Enum):
 class Tool(enum.Enum):
     Line = 1
     Circle = 2
-
-class Control(enum.Enum):
-    Mouse = 1
-    Eye = 2
     
     
 def Text(cx, cy, color, fontSize, textStr, _screen):
@@ -50,7 +46,7 @@ def Text(cx, cy, color, fontSize, textStr, _screen):
     _screen.blit(text, textRect)    
 
 class CalibrationDot():
-    def __init__(self, cx, cy, radius, steps=90):
+    def __init__(self, cx, cy, radius, steps=55):
         self.cx = cx
         self.cy = cy
         self.radius = radius
@@ -175,8 +171,6 @@ class Canvas():
             i = i + 1
             self.point.append(0)
         
-            
-    
     def draw(self, screen):
 
         pygame.draw.rect(screen, (255,255,255), pygame.Rect((self.appWidth-self.appHeight)/2, 0, self.appHeight, self.appHeight))
@@ -184,7 +178,7 @@ class Canvas():
         
 
 class CanvasButton():
-    def __init__(self, cx, cy, radius, steps=30):
+    def __init__(self, cx, cy, radius, steps=20):
         
         self.cx = int(cx)    # Center x position
         self.cy = int(cy)    # Center y position
@@ -266,6 +260,12 @@ class BrushStroke ():
             Color.Trim:         (229, 229, 229),
             Color.Confirmation: (247, 249, 249)
         }
+    
+    def getPointOne(self):
+        return (self.x1, self.y1)
+
+    def getPointTwo(self):
+        return (self.x2, self.y2)
             
     def draw(self, screen):
         if self.tool == Tool.Line:

@@ -27,6 +27,13 @@ class MockGazeEstimationThread():
     def train(self):
         pass
 
+class MockGcodeGeneration():
+    def initialize(self):
+        pass
+
+    def generate(self, point1, point2, color, tool):
+        pygame.time.delay(4000)
+
 class App():
     def __init__(self, width, height, canvas_divisions=10, calibration_dots=4, port="COM3"):
         self._running = True
@@ -83,20 +90,20 @@ class App():
         self.button_dict = {
             ProgramState.Calibration:   [CalibrationDot((calibration_width / 2) + calibration_width * (i % self.calibration_dots),
                                                         (calibration_height / 2) + calibration_height * (i // self.calibration_dots),
-                                                        100) for i in range(calibration_dots * calibration_dots)],
-            ProgramState.Primary:       [ColorButton(self.width * (1/8)-50, self.height * (1/2), self.width * (2/8)-100, self.height, self.color_dict[Color.ColorSelect], 200, 200, ProgramState.ColorSelect, 30),
-                                         ColorButton(self.width * (7/8)+50, self.height * (1/2), self.width * (2/8)-100, self.height, self.color_dict[Color.ToolSelect], 200, 200, ProgramState.ToolSelect, 30),],
+                                                        65) for i in range(calibration_dots * calibration_dots)],
+            ProgramState.Primary:       [ColorButton(self.width * (1/8)-50, self.height * (1/2), self.width * (2/8)-100, self.height, self.color_dict[Color.ColorSelect], self.width * (2/8)-100, self.height, ProgramState.ColorSelect, 20),
+                                         ColorButton(self.width * (7/8)+50, self.height * (1/2), self.width * (2/8)-100, self.height, self.color_dict[Color.ToolSelect], self.width * (2/8)-100, self.height, ProgramState.ToolSelect, 20),],
             
-            ProgramState.ColorSelect:   [ColorButton(self.width * (1/4), self.height * (1/4), 100, 100, self.color_dict[Color.Blue], self.width / 2, self.height / 2, Color.Blue, 90),     # Upper left color select button
-                                         ColorButton(self.width * (3/4), self.height * (1/4), 100, 100, self.color_dict[Color.Green], self.width / 2, self.height / 2, Color.Green, 90),   # Upper right color select button
-                                         ColorButton(self.width * (1/4), self.height * (3/4), 100, 100, self.color_dict[Color.Red], self.width / 2, self.height / 2, Color.Red, 90),      # Lower left color select button
-                                         ColorButton(self.width * (3/4), self.height * (3/4), 100, 100, self.color_dict[Color.Yellow], self.width / 2, self.height / 2, Color.Yellow, 90)], # Lower right color select button
+            ProgramState.ColorSelect:   [ColorButton(self.width * (1/4), self.height * (1/4), 100, 100, self.color_dict[Color.Blue], self.width / 2, self.height / 2, Color.Blue, 50),     # Upper left color select button
+                                         ColorButton(self.width * (3/4), self.height * (1/4), 100, 100, self.color_dict[Color.Green], self.width / 2, self.height / 2, Color.Green, 50),   # Upper right color select button
+                                         ColorButton(self.width * (1/4), self.height * (3/4), 100, 100, self.color_dict[Color.Red], self.width / 2, self.height / 2, Color.Red, 50),      # Lower left color select button
+                                         ColorButton(self.width * (3/4), self.height * (3/4), 100, 100, self.color_dict[Color.Yellow], self.width / 2, self.height / 2, Color.Yellow, 50)], # Lower right color select button
 
-            ProgramState.ToolSelect:    [ColorButton(self.width * (1/4), self.height * (1/2), 200, 200, self.color_dict[Color.Control], 200, 200, Tool.Line, 30),
-                                         ColorButton(self.width * (3/4), self.height * (1/2), 200, 200, self.color_dict[Color.Control], 200, 200, Tool.Circle, 30)],
+            ProgramState.ToolSelect:    [ColorButton(self.width * (1/4), self.height * (1/2), 200, 200, self.color_dict[Color.Control], self.width / 2, self.height, Tool.Line, 20),
+                                         ColorButton(self.width * (3/4), self.height * (1/2), 200, 200, self.color_dict[Color.Control], self.width / 2, self.height, Tool.Circle, 20)],
 
-            ProgramState.Confirmation:  [ColorButton(self.width * (1/8), self.height * (1/2), 200, 200, self.color_dict[Color.Trim], 250, 250, 0, 15),
-                                         ColorButton(self.width * (7/8), self.height * (1/2), 200, 200, self.color_dict[Color.Trim], 250, 250, 1, 15)]
+            ProgramState.Confirmation:  [ColorButton(self.width * (1/8), self.height * (1/2), 200, 200, self.color_dict[Color.Trim], self.width / 2, self.height, 0, 10),
+                                         ColorButton(self.width * (7/8), self.height * (1/2), 200, 200, self.color_dict[Color.Trim], self.width / 2, self.height, 1, 10)]
 
         }
 
@@ -104,7 +111,7 @@ class App():
     
         # Object that runs the gaze estimation in a separate thread
         # Deposits predictions into a queue that can be accessed through get()
-        """
+        
         self.gaze_estimation = GazeEstimationThread(x_estimator=linear_model.Ridge(alpha=0.9),
                                                     y_estimator=linear_model.Ridge(alpha=0.9),
                                                     face_cascade_path="./classifiers/haarcascade_frontalface_default.xml",
@@ -112,10 +119,11 @@ class App():
                                                     shape_predictor_path="./classifiers/shape_predictor_68_face_landmarks.dat",
                                                     width=self.width,
                                                     height=self.height)
-        """
+        
 
         #self.gcode_generation = GcodeGeneration("COM3", 250000)
-        self.gaze_estimation = MockGazeEstimationThread()
+        self.gcode_generation = MockGcodeGeneration()
+        #self.gaze_estimation = MockGazeEstimationThread()
     
     def init(self):
         pygame.init()   # Init pygame stuff
@@ -153,11 +161,14 @@ class App():
         if gaze_location != None:   # If there was a location, update the classes known location
             self.gaze_state = gaze_location
         
+        if self.gaze_state == None and self.state != ProgramState.Calibration:
+            return
+        
         # C A L I B R A T I O N   L O O P
         if self.state == ProgramState.Calibration:
             
             if self.active_calibration_dot == -1:
-                #time.sleep(4)
+                pygame.time.delay(4000)
                 self.active_calibration_dot += 1
             
             dot = self.button_dict[self.state][self.active_calibration_dot]
@@ -173,8 +184,9 @@ class App():
                 self.active_calibration_dot += 1
 
             if self.active_calibration_dot == self.calibration_dots * self.calibration_dots:
-                self.gaze_estimation.train()
-                self.state = ProgramState.Primary
+                self.gaze_estimation.train()        # Train the regressors that perform gaze estimation
+                self.gcode_generation.initialize()  # Send the initialization string for the CNC
+                self.state = ProgramState.Primary   # Switch to the primary screen
 
             """
             # If 10 samples of data are added, train the regressors and move onto next state
@@ -189,6 +201,7 @@ class App():
                 button.contains(self.gaze_state.getX(), self.gaze_state.getY())
                 if button.get_step() == 0:
                     self.state = button.get_buttonType()
+                    button.reset()
 
             for i in range (0, self.gridSize*self.gridSize):
                 self.canvasButtons[i].contains(self.gaze_state.getX(), self.gaze_state.getY())
@@ -208,6 +221,7 @@ class App():
                 if button.get_step() == 0:
                     self.active_color = button.get_buttonType()
                     self.state = ProgramState.Primary
+                    button.reset()
 
 
         # T O O L   S E L E C T   L O O P
@@ -217,6 +231,7 @@ class App():
                 if button.get_step() == 0:
                     self.active_tool = button.get_buttonType()
                     self.state = ProgramState.Primary
+                    button.reset()
                             
         # C O N F I R M A T I O N   L O O P
         elif self.state == ProgramState.Confirmation:
@@ -228,12 +243,24 @@ class App():
                         #Add current brush stroke to commited brush stroke list
                         self.brushStroke_dict.append(self.brushStrokeTemp)
                         self.count = self.count + 1
+
+                        x1, y1 = self.brushStrokeTemp.getPointOne()
+                        x2, y2 = self.brushStrokeTemp.getPointTwo()
+
+                        x1 /= self.height
+                        y1 /= self.height
+                        x2 /= self.height
+                        y2 /= self.height
+
+                        self.gcode_generation.generate((x1, y1), (x2, y2), self.active_tool, self.active_color)     # Generate and send g-code string to CNC
                         
                     #Reset the canvas for next brush stroke and move back to primary
                     self.pointOne = (0, 0)
                     self.pointTwo = (0, 0)
                     self.CommitStroke = 0
                     self.state = ProgramState.Primary
+
+                    button.reset()
     
     def render(self):
         self._screen.fill((255,255,255))  # Clear screen
@@ -342,7 +369,7 @@ class App():
             self.loop()
             self.render()
 
-            pygame.time.delay(25)   # Delay to run at about 60 updates per second
+            pygame.time.delay(30)   # Delay to run at about 60 updates per second
         
         self.cleanup()  # Cleanup and exit pygame
 

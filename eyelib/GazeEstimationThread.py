@@ -7,6 +7,8 @@ By Dean Lawrence
 
 import threading
 import queue
+import cv2
+import time
 
 from . import GazeEstimation
 from . import FeatureExtraction
@@ -28,8 +30,12 @@ class GazeEstimationThread():
 
     def run(self):
         while True:
-            self._feature_extractor.update_feature_state()
-            #self._feature_extractor.display_feature_state()
+            self._feature_extractor.update_feature_state(pupil_alpha=0.7)
+            self._feature_extractor.display_feature_state()
+
+            cv2.waitKey(1)
+
+            #print(time.time())
 
             if self._gaze_estimator.is_trained():
                 self._gaze_queue.put(self._gaze_estimator.predict(self._feature_extractor.get_state_as_vector()))

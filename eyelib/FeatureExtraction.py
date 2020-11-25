@@ -219,9 +219,6 @@ class FeatureExtraction():
         width_scale = image.shape[1] / image_scale
         height_scale = image.shape[1] / image_scale
 
-        print(width_scale, height_scale)
-
-        #blurred = cv2.GaussianBlur(image, (5, 5), 0)
         downscaled = scale_image(image, image_scale)
 
         gray = cv2.cvtColor(downscaled, cv2.COLOR_BGR2GRAY)
@@ -229,14 +226,9 @@ class FeatureExtraction():
         x_gradients, y_gradients = get_image_gradients(gray)    # Compute gradients in each direction as well as magnitude
         magnitudes = get_magnitudes(x_gradients, y_gradients)
 
-        #cv2.imshow("magnitudes", magnitudes)
-
         threshold = compute_threshold(magnitudes, 2)   # compute the threshold for culling the gradients
 
         normalize_gradients(x_gradients, y_gradients, magnitudes, threshold)    # Normalize and cull gradients
-
-        print(threshold)
-        #print(x_gradients)
 
         weights = blur_and_invert(gray) # Find weights by blurring and inverting the image
 
@@ -384,8 +376,13 @@ class FeatureExtraction():
         #             self.current_state["right_pupil"], 
         #             self.current_state["left_pupil"]]
         
-        temp_list = [self.current_state["right_eye"],
-                     self.current_state["left_eye"],
+        right_pupil_x = self.current_state["right_pupil"][0] + self.current_state["right_eye"][0]
+        right_pupil_y = self.current_state["right_pupil"][1] + self.current_state["right_eye"][1]
+        left_pupil_x = self.current_state["left_pupil"][0] + self.current_state["left_eye"][0]
+        left_pupil_y = self.current_state["left_pupil"][1] + self.current_state["left_eye"][1]
+
+        temp_list = [#self.current_state["right_eye"],
+                     #self.current_state["left_eye"],
                      self.current_state["right_pupil"],
                      self.current_state["left_pupil"]]
 
@@ -394,7 +391,7 @@ class FeatureExtraction():
             for item in lst:
                 final_list.append(item)
 
-        return final_list
+        return [right_pupil_x, right_pupil_y, left_pupil_x, left_pupil_y]
     
     def release(self):
         self.cap.release()

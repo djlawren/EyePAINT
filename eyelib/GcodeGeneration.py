@@ -9,18 +9,9 @@ import serial
 import enum
 import time
 import math
+import pygame
 
-# Enums for types of colors
-class Color(enum.Enum):
-    Blue = 1
-    Green = 2
-    Red = 3
-    Yellow = 4
-
-# Enum for the types of tools
-class Tool():
-    Line = 1
-    Circle = 2
+from . import Color, Tool
 
 class GcodeGeneration():
     def __init__(self, port, baud):
@@ -146,4 +137,5 @@ class GcodeGeneration():
         """
         print(final_string)
         self.ser.write(final_string.encode())    # Write complete string over serial to board
-        time.sleep(1)
+        #time.sleep(1)
+        pygame.time.delay(4000)

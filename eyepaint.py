@@ -12,7 +12,7 @@ from sklearn import linear_model
 
 from eyelib import GazeEstimationThread, GazeState
 from eyelib import GcodeGeneration
-from eyelib import ProgramState, Color, Tool, Control, Text, ColorButton, Canvas, CanvasButton, BrushStroke, CalibrationDot
+from eyelib import ProgramState, Color, Tool, Text, ColorButton, Canvas, CanvasButton, BrushStroke, CalibrationDot
 
 
 class MockGazeEstimationThread():
@@ -40,18 +40,13 @@ class App():
         self._screen = None
         self.size = self.width, self.height = width, height     # Hardcoded dimensions for the window
         
-        #self.mouseXY
-        
         self.canvas_divisions = canvas_divisions
 
-        #self.state = ProgramState.Calibration       # Program begins in the calibrated state
-        #self.state = ProgramState.ControlSelect
-        self.state = ProgramState.Calibration
-        self.gaze_state = None
+        self.state = ProgramState.Calibration   # Variable to store which screen the program is currently on
+        self.gaze_state = None                  # Variable to store latest location where the user is looking
 
         self.active_color = Color.Blue  # Store an active color
         self.active_tool = Tool.Line    # Store an active tool
-        self.active_control = Control.Mouse
         
         self.gridSize = canvas_divisions
         self.radius = int((self.height/self.gridSize)/2)
@@ -112,6 +107,7 @@ class App():
         # Object that runs the gaze estimation in a separate thread
         # Deposits predictions into a queue that can be accessed through get()
         
+        """
         self.gaze_estimation = GazeEstimationThread(x_estimator=linear_model.Ridge(alpha=0.9),
                                                     y_estimator=linear_model.Ridge(alpha=0.9),
                                                     face_cascade_path="./classifiers/haarcascade_frontalface_default.xml",
@@ -119,11 +115,11 @@ class App():
                                                     shape_predictor_path="./classifiers/shape_predictor_68_face_landmarks.dat",
                                                     width=self.width,
                                                     height=self.height)
-        
+        """
 
         #self.gcode_generation = GcodeGeneration("COM3", 250000)
         self.gcode_generation = MockGcodeGeneration()
-        #self.gaze_estimation = MockGazeEstimationThread()
+        self.gaze_estimation = MockGazeEstimationThread()
     
     def init(self):
         pygame.init()   # Init pygame stuff
@@ -366,8 +362,8 @@ class App():
             for event in pygame.event.get():
                 self.on_event(event)
             
-            self.loop()
-            self.render()
+            self.loop()         # Call loop method that updates the logic of the program
+            self.render()       # Render method that clears screen and redraws buttons
 
             pygame.time.delay(30)   # Delay to run at about 60 updates per second
         

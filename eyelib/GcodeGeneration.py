@@ -26,12 +26,12 @@ class GcodeGeneration():
         self.scale_x = 260      # Scale of canvas from a float between 0-1
         self.scale_y = 260      # Scale of canvas from a float between 0-1
 
-        self.clean_x = 340      # Position on x-axis of cleaning mechanism from zero position
-        self.clean_y = 22       # Position on y-axis of cleaning mechanism from zero position
+        self.clean_x = 295      # Position on x-axis of cleaning mechanism from zero position
+        self.clean_y = 20       # Position on y-axis of cleaning mechanism from zero position
 
-        self.canvas_height = 10 # Height of canvas on z-axis
-        self.normal_height = 30 # Height of floating on z-axis
-        self.paint_height = 0   # Height of paint pot on z-axis
+        self.canvas_height = 14 # Height of canvas on z-axis
+        self.normal_height = 34 # Height of floating on z-axis
+        self.paint_height = 4   # Height of paint pot on z-axis
 
     def initialize(self):
         """
@@ -40,7 +40,7 @@ class GcodeGeneration():
 
         # Measure in mm, Set steps per unit of measurement, absolute positioning, home X and Y axes, home Z axis, move back up to normal height
         init_string = "G21\r\n" + \
-                      "M92 X80.00 Y80.00 Z400.00\r\n" + \
+                      "M92 X40.00 Y40.00 Z400.00\r\n" + \
                       "G90\r\n" + \
                       "G28 X Y\r\n" + \
                       "G28 Z\r\n" + \
@@ -105,17 +105,20 @@ class GcodeGeneration():
         Creates and returns the cleaning g-code
         """
         
-        pot_x = 340
-        pot_y = 66
+        pot_x = 295
+        pot_y = 54
 
         # Move to position over cleaning rag, move down to rag, move right on rag, move left on rag, lift up on rag
         return "G01 X{} Y{} Z{}\r\n".format(pot_x, pot_y, self.normal_height) + \
                "G01 X{} Y{} Z{}\r\n".format(pot_x, pot_y, self.paint_height) + \
                "G01 X{} Y{} Z{}\r\n".format(pot_x, pot_y, self.normal_height) + \
-               "G01 X{} Y{} Z{}\r\n".format(self.clean_x - 20, self.clean_y, self.normal_height) + \
-               "G01 X{} Y{} Z{}\r\n".format(self.clean_x - 20, self.clean_y, self.canvas_height) + \
-               "G01 X{} Y{} Z{}\r\n".format(self.clean_x + 20, self.clean_y, self.canvas_height) + \
-               "G01 X{} Y{} Z{}\r\n".format(self.clean_x - 20, self.clean_y, self.canvas_height) + \
+               "G01 X{} Y{} Z{}\r\n".format(self.clean_x - 25, self.clean_y, self.normal_height) + \
+               "G01 X{} Y{} Z{}\r\n".format(self.clean_x - 25, self.clean_y, self.canvas_height) + \
+               "G01 X{} Y{} Z{}\r\n".format(self.clean_x + 25, self.clean_y, self.canvas_height) + \
+               "G01 X{} Y{} Z{}\r\n".format(self.clean_x + 25, self.clean_y - 20, self.canvas_height) + \
+               "G01 X{} Y{} Z{}\r\n".format(self.clean_x - 25, self.clean_y - 20, self.canvas_height) + \
+               "G01 X{} Y{} Z{}\r\n".format(self.clean_x - 25, self.clean_y, self.canvas_height) + \
+               "G01 X{} Y{} Z{}\r\n".format(self.clean_x + 25, self.clean_y, self.canvas_height) + \
                "G01 X{} Y{} Z{}\r\n".format(self.clean_x, self.clean_y, self.normal_height)
 
     def _set(self, color):
@@ -123,16 +126,16 @@ class GcodeGeneration():
         Creates and returns the paint set g-code
         """
 
-        pot_x = 340     # All of the pots are in line on the x-axis
+        pot_x = 295     # All of the pots are in line on the x-axis
 
         if color == Color.Blue:
-            pot_y = 242
+            pot_y = 234
         elif color == Color.Green:
-            pot_y = 198
+            pot_y = 190
         elif color == Color.Red:
-            pot_y = 154
+            pot_y = 156
         elif color == Color.Yellow:
-            pot_y = 110
+            pot_y = 102
 
         # Move over paint pot, move down to paint, move up from pot
         return "G01 X{} Y{} Z{}\r\n".format(pot_x, pot_y, self.normal_height) + \

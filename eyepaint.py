@@ -202,6 +202,7 @@ class App():
             for i in range (0, self.gridSize*self.gridSize):
                 self.canvasButtons[i].contains(self.gaze_state.getX(), self.gaze_state.getY())
                 if self.canvasButtons[i].get_step() <= 5:
+                    pygame.time.delay(30)
                     if self.pointOne == (0,0):
                         self.pointOne = self.canvasButtons[i].get_xy()
                     else:
@@ -243,12 +244,15 @@ class App():
                         x1, y1 = self.brushStrokeTemp.getPointOne()
                         x2, y2 = self.brushStrokeTemp.getPointTwo()
 
-                        x1 /= self.height
+                        x1 = (x1 - ((self.width-self.height)/2)) / self.height
                         y1 /= self.height
-                        x2 /= self.height
+                        x2 = (x2 - ((self.width-self.height)/2)) / self.height
                         y2 /= self.height
-
-                        self.gcode_generation.generate((x1, y1), (x2, y2), self.active_tool, self.active_color)     # Generate and send g-code string to CNC
+                        print(x1)
+                        print(y1)
+                        print(x2)
+                        print(y2)
+                        self.gcode_generation.generate((x1, y1), (x2, y2), self.active_color, self.active_tool)     # Generate and send g-code string to CNC
                         
                     #Reset the canvas for next brush stroke and move back to primary
                     self.pointOne = (0, 0)
@@ -365,7 +369,7 @@ class App():
             self.loop()         # Call loop method that updates the logic of the program
             self.render()       # Render method that clears screen and redraws buttons
 
-            pygame.time.delay(30)   # Delay to run at about 60 updates per second
+            pygame.time.delay(60)   # Delay to run at about 60 updates per second
         
         self.cleanup()  # Cleanup and exit pygame
 

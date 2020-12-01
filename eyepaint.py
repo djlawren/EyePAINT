@@ -117,8 +117,8 @@ class App():
                                                     height=self.height)
         """
 
-        #self.gcode_generation = GcodeGeneration("COM3", 250000)
-        self.gcode_generation = MockGcodeGeneration()
+        self.gcode_generation = GcodeGeneration(self.port, 250000)
+        #self.gcode_generation = MockGcodeGeneration()
         self.gaze_estimation = MockGazeEstimationThread()
     
     def init(self):

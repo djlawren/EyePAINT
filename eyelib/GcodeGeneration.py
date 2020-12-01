@@ -46,6 +46,7 @@ class GcodeGeneration():
                       "G28 Z\r\n" + \
                       "G01 Z{}\r\n".format(self.normal_height)
 
+        self._write_to_file(init_string)
         self._send(init_string)
 
     def generate(self, point1, point2, color, tool):
@@ -62,6 +63,7 @@ class GcodeGeneration():
 
         complete_string += self._clean()    # Add the clean routine to current string
 
+        self._write_to_file(complete_string)
         self._send(complete_string)     # Send complete string to the SKR Pro
     
     def _line(self, point1, point2):
@@ -136,6 +138,10 @@ class GcodeGeneration():
         return "G01 X{} Y{} Z{}\r\n".format(pot_x, pot_y, self.normal_height) + \
                "G01 X{} Y{} Z{}\r\n".format(pot_x, pot_y, self.paint_height) + \
                "G01 X{} Y{} Z{}\r\n".format(pot_x, pot_y, self.normal_height)
+
+    def _write_to_file(self, final_string):
+        with open("gcode_log.txt", "a") as fp:
+            fp.write(final_string)
 
     def _send(self, final_string):
         """

@@ -103,11 +103,17 @@ class GcodeGeneration():
         Creates and returns the cleaning g-code
         """
         
+        pot_x = 340
+        pot_y = 66
+
         # Move to position over cleaning rag, move down to rag, move right on rag, move left on rag, lift up on rag
-        return "G01 X{} Y{} Z{}\r\n".format(self.clean_x - 10, self.clean_y, self.normal_height) + \
-               "G01 X{} Y{} Z{}\r\n".format(self.clean_x - 10, self.clean_y, self.canvas_height) + \
-               "G01 X{} Y{} Z{}\r\n".format(self.clean_x + 10, self.clean_y, self.canvas_height) + \
-               "G01 X{} Y{} Z{}\r\n".format(self.clean_x - 10, self.clean_y, self.canvas_height) + \
+        return "G01 X{} Y{} Z{}\r\n".format(pot_x, pot_y, self.normal_height) + \
+               "G01 X{} Y{} Z{}\r\n".format(pot_x, pot_y, self.paint_height) + \
+               "G01 X{} Y{} Z{}\r\n".format(pot_x, pot_y, self.normal_height) + \
+               "G01 X{} Y{} Z{}\r\n".format(self.clean_x - 20, self.clean_y, self.normal_height) + \
+               "G01 X{} Y{} Z{}\r\n".format(self.clean_x - 20, self.clean_y, self.canvas_height) + \
+               "G01 X{} Y{} Z{}\r\n".format(self.clean_x + 20, self.clean_y, self.canvas_height) + \
+               "G01 X{} Y{} Z{}\r\n".format(self.clean_x - 20, self.clean_y, self.canvas_height) + \
                "G01 X{} Y{} Z{}\r\n".format(self.clean_x, self.clean_y, self.normal_height)
 
     def _set(self, color):
@@ -118,13 +124,13 @@ class GcodeGeneration():
         pot_x = 340     # All of the pots are in line on the x-axis
 
         if color == Color.Blue:
-            pot_y = 198
+            pot_y = 242
         elif color == Color.Green:
-            pot_y = 154
+            pot_y = 198
         elif color == Color.Red:
-            pot_y = 110
+            pot_y = 154
         elif color == Color.Yellow:
-            pot_y = 66
+            pot_y = 110
 
         # Move over paint pot, move down to paint, move up from pot
         return "G01 X{} Y{} Z{}\r\n".format(pot_x, pot_y, self.normal_height) + \

@@ -9,6 +9,7 @@ import threading
 import queue
 import cv2
 import time
+import numpy as np
 
 from . import GazeEstimation
 from . import FeatureExtraction
@@ -29,18 +30,32 @@ class GazeEstimationThread():
         self._thread.daemon = True
         self._thread.start()
 
+        self.last_prediction = None
+
     def run(self):
         while True:
             start_time = time.time()
             self._feature_extractor.update_feature_state(pupil_alpha=0.7)
-            #self._feature_extractor.display_feature_state()
+            self._feature_extractor.display_feature_state()
 
-            #cv2.waitKey(1)
+            cv2.waitKey(1)
 
             #print(time.time())
 
             if self._gaze_estimator.is_trained():
-                self._gaze_queue.put(self._gaze_estimator.predict(self._feature_extractor.get_state_as_vector()))
+                prediction = self._gaze_estimator.predict(self._feature_extractor.get_state_as_vector())
+
+                if self.last_prediction == None:
+                    self.last_prediction = prediction
+                    continue
+
+                if np.sqrt((self.last_prediction.getX() - prediction.getX()) ** 2 + (self.last_prediction.getY() - prediction.getY()) ** 2) >= 300:
+                    self._gaze_queue.put(prediction)
+                    #print("Prediction: ", prediction.getX(), prediction.getY())
+                    #print("Last Prediction: ", self.last_prediction.getX(), self.last_prediction.getY())
+                    self.last_prediction = prediction
+
+                #self._gaze_queue.put(prediction)
 
                 end_time = time.time()
                 self._time_samples.append(end_time - start_time)

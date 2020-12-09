@@ -381,6 +381,11 @@ class FeatureExtraction():
         left_pupil_x = (self.current_state["left_pupil"][0] + self.current_state["left_eye"][0]) / self.current_state["face"][2]
         left_pupil_y = (self.current_state["left_pupil"][1] + self.current_state["left_eye"][1]) / self.current_state["face"][3]
 
+        #print("right pupil x", right_pupil_x)
+        #print("right pupil y", right_pupil_y)
+        #print("left pupil x", left_pupil_x)
+        #print("left pupil y", left_pupil_y)
+
         return [right_pupil_x, right_pupil_y, left_pupil_x, left_pupil_y]
     
     def release(self):

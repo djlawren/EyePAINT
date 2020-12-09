@@ -9,8 +9,9 @@ import enum
 import math
 import argparse
 import numpy as np
-import seaborn as sns
 import matplotlib.pyplot as plt
+import seaborn as sns
+import pandas as pd
 import random
 from sklearn import linear_model
 
@@ -36,19 +37,21 @@ def create_stats_report(mean, min_val, first, median, third, max_val):
 
     report_text = ""
 
-    report_text += "Mean: " + mean + "\n"
+    report_text += "Mean: " + str(mean) + "\n"
     report_text += "Five number summary:\n"
-    report_text += "Min: " + min_val + "\n"
-    report_text += "1st: " + first + "\n"
-    report_text += "Med: " + median + "\n"
-    report_text += "3rd: " + third + "\n"
-    report_text += "Max: " + max_val + "\n\n"
+    report_text += "Min: " + str(min_val) + "\n"
+    report_text += "1st: " + str(first) + "\n"
+    report_text += "Med: " + str(median) + "\n"
+    report_text += "3rd: " + str(third) + "\n"
+    report_text += "Max: " + str(max_val) + "\n\n"
 
     return report_text
 
-def generate_report(experiment_name, time_data, accuracy_data, calibration_x_data, calibration_y_data):
+def generate_report(experiment_name, percent_correct, time_data, accuracy_data, calibration_x_data, calibration_y_data):
     
     report_text = ""
+
+    report_text += "Percent Correct: " + str(percent_correct) + "\n\n"
 
     # Time data processing
     report_text += "--- Time Data ---\n"
@@ -56,7 +59,7 @@ def generate_report(experiment_name, time_data, accuracy_data, calibration_x_dat
     time_min, time_max = min(time_data), max(time_data)
     time_avg = sum(time_data) / len(time_data)
 
-    report_text += "Samples: " + len(time_data) + "\n"
+    report_text += "Samples: " + str(len(time_data)) + "\n"
     report_text += create_stats_report(time_avg, time_min, time_first_quartile, time_median, time_third_quartile, time_max)
 
     # Accuracy data processing
@@ -65,7 +68,7 @@ def generate_report(experiment_name, time_data, accuracy_data, calibration_x_dat
     accuracy_min, accuracy_max = min(accuracy_data), max(accuracy_data)
     accuracy_avg = sum(accuracy_data) / len(accuracy_data)
 
-    report_text += "Samples: " + len(accuracy_data) + "\n"
+    report_text += "Samples: " + str(len(accuracy_data)) + "\n"
     report_text += create_stats_report(accuracy_avg, accuracy_min, accuracy_first_quartile, accuracy_median, accuracy_third_quartile, accuracy_max)
 
     # Calibration X data processing
@@ -74,7 +77,7 @@ def generate_report(experiment_name, time_data, accuracy_data, calibration_x_dat
     calibration_x_min, calibration_x_max = min(calibration_x_data), max(calibration_x_data)
     calibration_x_avg = sum(calibration_x_data) / len(calibration_x_data)
 
-    report_text += "Samples: " + len(calibration_x_data) + "\n"
+    report_text += "Samples: " + str(len(calibration_x_data)) + "\n"
     report_text += create_stats_report(calibration_x_avg, calibration_x_min, calibration_x_first_quartile, calibration_x_median, calibration_x_third_quartile, calibration_x_max)
 
     # Calibration Y data processing
@@ -83,7 +86,7 @@ def generate_report(experiment_name, time_data, accuracy_data, calibration_x_dat
     calibration_y_min, calibration_y_max = min(calibration_y_data), max(calibration_y_data)
     calibration_y_avg = sum(calibration_y_data) / len(calibration_y_data)
 
-    report_text += "Samples: " + len(calibration_y_data) + "\n"
+    report_text += "Samples: " + str(len(calibration_y_data)) + "\n"
     report_text += create_stats_report(calibration_y_avg, calibration_y_min, calibration_y_first_quartile, calibration_y_median, calibration_y_third_quartile, calibration_y_max)
 
     with open(experiment_name + "_report.txt", "w") as fp:
@@ -124,22 +127,21 @@ class App():
         self.active_testing_dot = -1
         self.current_trial = 0
         self.accuracy_data = []
+        self.accuracy_x_data = []
+        self.accuracy_y_data = []
+
+        self.correct = 0
     
         # Object that runs the gaze estimation in a separate thread
         # Deposits predictions into a queue that can be accessed through get()
         
-        """
-        self.gaze_estimation = GazeEstimationThread(x_estimator=linear_model.Ridge(alpha=0.9),
-                                                    y_estimator=linear_model.Ridge(alpha=0.9),
+        self.gaze_estimation = GazeEstimationThread(x_estimator=linear_model.LinearRegression(),
+                                                    y_estimator=linear_model.LinearRegression(),
                                                     face_cascade_path="./classifiers/haarcascade_frontalface_default.xml",
                                                     eye_cascade_path="./classifiers/haarcascade_eye.xml",
                                                     shape_predictor_path="./classifiers/shape_predictor_68_face_landmarks.dat",
                                                     width=self.width,
                                                     height=self.height)
-        """
-
-        #self.gcode_generation = GcodeGeneration("COM3", 250000)
-        self.gaze_estimation = MockGazeEstimationThread()
     
     def init(self):
         pygame.init()   # Init pygame stuff
@@ -220,6 +222,7 @@ class App():
             dot.decrement()
 
             if dot.get_step() == 0:
+                dot.reset()
                 dot.crad = 0
                 
                 self.current_trial += 1
@@ -227,9 +230,14 @@ class App():
                 x_diff = abs(dot.get_x() - self.gaze_state.getX() + self.canvas_width / 2) // self.canvas_width
                 y_diff = abs(dot.get_y() - self.gaze_state.getY() + self.canvas_height / 2) // self.canvas_height
 
-                self.accuracy_data.append(x_diff + y_diff)
+                if x_diff + y_diff == 0:
+                    self.correct += 1
 
-                self.active_calibration_dot = random.randrange(self.canvas_divisions * self.canvas_divisions)
+                self.accuracy_data.append(x_diff + y_diff)
+                self.accuracy_x_data.append(x_diff)
+                self.accuracy_y_data.append(y_diff)
+
+                self.active_testing_dot = random.randrange(self.canvas_divisions * self.canvas_divisions)
             
             if self.current_trial >= self.trial_runs:
                 self._running = False
@@ -263,7 +271,39 @@ class App():
             pygame.time.delay(30)   # Delay to run at about 60 updates per second
         
         calibration_x_data, calibration_y_data = self.gaze_estimation.get_calibration_samples()
-        generate_report(self.experiment_name, self.gaze_estimation.get_time_samples(), self.accuracy_data, calibration_x_data, calibration_y_data)
+        generate_report(self.trial_name, self.correct / self.trial_runs, self.gaze_estimation.get_time_samples(), self.accuracy_data, calibration_x_data, calibration_y_data)
+
+        sns.histplot(self.accuracy_data).set_title("Accuracy")
+        plt.savefig(self.trial_name + '_accuracy_histogram.png')
+        plt.clf()
+
+        sns.histplot(self.accuracy_x_data).set_title("X Accuracy")
+        plt.savefig(self.trial_name + '_accuracy_x_histogram.png')
+        plt.clf()
+
+        sns.histplot(self.accuracy_y_data).set_title("Y Accuracy")
+        plt.savefig(self.trial_name + '_accuracy_y_histogram.png')
+        plt.clf()
+
+        sns.histplot(self.gaze_estimation.get_time_samples()).set_title("Update Period")
+        plt.savefig(self.trial_name + '_speed_histogram.png')
+        plt.clf()
+        
+        sns.kdeplot(x=self.accuracy_x_data, y=self.accuracy_y_data).set_title("Accuracy Kde")
+        plt.savefig(self.trial_name + '_accuracy_kde.png')
+        plt.clf()
+
+        sns.jointplot(x=self.accuracy_x_data, y=self.accuracy_y_data)
+        plt.savefig(self.trial_name + '_accuracy_joint.png')
+        plt.clf()
+
+        sns.kdeplot(x=calibration_x_data, y=calibration_y_data).set_title("Calibration Kde")
+        plt.savefig(self.trial_name + '_calibration_kde.png')
+        plt.clf()
+
+        sns.jointplot(x=calibration_x_data, y=calibration_y_data)
+        plt.savefig(self.trial_name + '_calibration_joint.png')
+        plt.clf()
 
         self.cleanup()  # Cleanup and exit pygame
 
@@ -272,8 +312,8 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
 
     parser.add_argument("trial_name", type=str, help="Name to attribute to this trial in the report")
-    parser.add_argument("--width", type=int, default=1600, help="Width for window to be")
-    parser.add_argument("--height", type=int, default=900, help="Height for window to be")
+    parser.add_argument("--width", type=int, default=1800, help="Width for window to be")
+    parser.add_argument("--height", type=int, default=1015, help="Height for window to be")
     parser.add_argument("--test_divisions", type=int, default=8, help="Number divisions for the testing grid")
     parser.add_argument("--trial_runs", type=int, default=50, help="Number of samples to take during trial")
     parser.add_argument("--calibration_dots", type=int, default=4, help="Width and height of calibration dot matrix")

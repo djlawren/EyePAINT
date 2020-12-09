@@ -248,10 +248,7 @@ class App():
                         y1 /= self.height
                         x2 = (x2 - ((self.width-self.height)/2)) / self.height
                         y2 /= self.height
-                        print(x1)
-                        print(y1)
-                        print(x2)
-                        print(y2)
+                        
                         self.gcode_generation.generate((x1, y1), (x2, y2), self.active_color, self.active_tool)     # Generate and send g-code string to CNC
                         
                     #Reset the canvas for next brush stroke and move back to primary

@@ -108,15 +108,15 @@ class App():
         # Deposits predictions into a queue that can be accessed through get()
         
         """
-        self.gaze_estimation = GazeEstimationThread(x_estimator=linear_model.Ridge(alpha=0.9),
-                                                    y_estimator=linear_model.Ridge(alpha=0.9),
+        self.gaze_estimation = GazeEstimationThread(x_estimator=linear_model.LinearRegression(),
+                                                    y_estimator=linear_model.LinearRegression(),
                                                     face_cascade_path="./classifiers/haarcascade_frontalface_default.xml",
                                                     eye_cascade_path="./classifiers/haarcascade_eye.xml",
                                                     shape_predictor_path="./classifiers/shape_predictor_68_face_landmarks.dat",
                                                     width=self.width,
                                                     height=self.height)
         """
-
+        
         self.gcode_generation = GcodeGeneration(port, 250000)
         #self.gcode_generation = MockGcodeGeneration()
         self.gaze_estimation = MockGazeEstimationThread()
@@ -345,6 +345,8 @@ class App():
             Text(self.width -200, (self.height * (1/2))-30, self.color_dict[Color.Text], 42, 'Commit', self._screen)
             Text(self.width -200, (self.height * (1/2))+30, self.color_dict[Color.Text], 42, 'Stroke', self._screen)
                                    
+        if self.gaze_state != None:
+            pygame.draw.circle(self._screen, (0,0,0), (self.gaze_state.getX(), self.gaze_state.getY()), 5)
             
         pygame.display.update()     # Redraw the display
 

@@ -27,11 +27,11 @@ class GcodeGeneration():
         self.scale_y = 195      # Scale of canvas from a float between 0-1
 
         self.clean_x = 240      # Position on x-axis of cleaning mechanism from zero position
-        self.clean_y = 25       # Position on y-axis of cleaning mechanism from zero position
+        self.clean_y = 30       # Position on y-axis of cleaning mechanism from zero position
 
         self.canvas_height = 14 # Height of canvas on z-axis
         self.normal_height = 34 # Height of floating on z-axis
-        self.paint_height = 4   # Height of paint pot on z-axis
+        self.paint_height = 1   # Height of paint pot on z-axis
 
     def initialize(self):
         """
